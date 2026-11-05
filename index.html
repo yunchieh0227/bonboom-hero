@@ -32,7 +32,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#12072a;touch-action
 body.rm .screen.show,body.rm .logo,body.rm .btn.big{animation:none!important}
 .logo{font-weight:900;font-size:50px;letter-spacing:-1px;line-height:.95;color:#ffe14d;
   text-shadow:0 4px 0 #ff4f7b,0 8px 0 #6a1b9a,0 12px 18px rgba(0,0,0,.5);animation:bob 2.6s ease-in-out infinite;margin-bottom:6px}
-.tag{font-weight:700;font-size:15px;color:#d8c8ff;margin:10px 0 14px;max-width:340px}
+.tag{font-weight:700;font-size:15px;color:#d8c8ff;margin:6px 0 12px;max-width:340px}
+.brandZh{font-weight:900;font-size:20px;letter-spacing:2px;color:#fff;margin-top:8px;text-shadow:0 3px 0 #b0285a,0 0 14px rgba(255,111,174,.6)}
 h2{font-weight:900;font-size:34px;color:#ffe14d;text-shadow:0 4px 0 #b0285a,0 6px 12px rgba(0,0,0,.4);margin-bottom:12px}
 .btn{font:900 20px/1 system-ui,"Segoe UI",Arial,"Microsoft JhengHei","PingFang TC","Noto Sans CJK TC",sans-serif;color:#fff;border:0;border-radius:16px;padding:14px 22px;min-height:52px;min-width:120px;
   background:linear-gradient(#ff6f8f,#e4336d);box-shadow:0 6px 0 #8f1442,0 10px 18px rgba(0,0,0,.35);cursor:pointer;margin:6px;
@@ -182,6 +183,16 @@ body.rm .fz.on:before,body.rm .fz.on canvas,body.rm .flag.on{animation:none!impo
 /* readable descriptions: more line spacing */
 .tag,.small,.item .ds,.goal .g2,.cxIntro,#cdInfo,#rvCard .rd,#cxInfo,.panel{line-height:1.6}
 .card .dsc{line-height:1.5}.item .ds{margin-top:4px}#cdInfo .sec{margin-top:12px;padding-top:9px}#cdInfo .sec>div{margin-top:4px}
+#a2hs{position:absolute;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;padding:10px 14px;
+  background:radial-gradient(ellipse at 50% 20%,#3d1a6e,#0b0518 65%);text-align:center;pointer-events:auto}
+#a2hs.show{display:flex;animation:pop .35s cubic-bezier(.2,1.5,.4,1)}
+#a2hs .a2Step{font-weight:900;font-size:13px;letter-spacing:2px;color:#ffd76a}
+#a2hs .a2T{font-weight:900;font-size:24px;line-height:1.25;color:#fff;margin:4px 0 2px;text-shadow:0 3px 0 #b0285a;max-width:400px}
+#a2hs .a2S{font-weight:800;font-size:14px;line-height:1.5;color:#dcd2ff;min-height:21px;max-width:380px}
+#a2hs canvas{width:250px;height:452px;margin:8px 0 6px}
+#a2hs .a2Dots i{display:inline-block;width:9px;height:9px;border-radius:5px;background:#4a3b78;margin:0 4px;transition:all .2s}
+#a2hs .a2Dots i.on{width:24px;background:#ffd76a}
+#a2hs .btn.green{min-width:150px}
 #reveal{background:#070312;padding:0;justify-content:flex-end}
 #reveal canvas{position:absolute;left:0;top:0;width:448px;height:800px}
 #rvCard{position:relative;width:404px;margin:0 0 6px;padding:10px 14px;border-radius:18px;background:linear-gradient(#1d2552,#11163a);border:2px solid #ffd76a;
@@ -212,7 +223,8 @@ body.rm .btn.glow,body.rm .goal.ready,body.rm .cx canvas,body.rm .cx.un:before,b
   <div id="toast"></div>
 
   <div class="screen" id="menu">
-    <div class="logo">BONKA-<br>GEDDON</div>
+    <div class="logo">BONBOOM<br>HERO!</div>
+    <div class="brandZh">蹦蹦英雄：彈珠超進化</div>
     <div class="tag">A chaotic ricochet roguelite where every shot multiplies the madness.</div>
     <canvas id="menuParade" width="400" height="90" style="width:400px;height:90px"></canvas>
     <div class="coins" style="margin:6px 0"><span class="coin"></span><span id="mCoins">0</span> &nbsp; <span style="color:#c9b8ff;font-size:16px">BEST WAVE <span id="mBest">0</span></span></div>
@@ -269,6 +281,15 @@ body.rm .btn.glow,body.rm .goal.ready,body.rm .cx canvas,body.rm .cx.un:before,b
     <button class="btn gray" data-a="back">BACK</button>
   </div>
 
+  <div id="a2hs" role="dialog" aria-modal="true" aria-labelledby="a2T">
+    <div class="a2Step" id="a2N">1 / 4</div>
+    <div class="a2T" id="a2T"></div>
+    <div class="a2S" id="a2S"></div>
+    <canvas id="a2Cv"></canvas>
+    <div class="a2Dots" id="a2Dots"><i></i><i></i><i></i><i></i></div>
+    <div class="row"><button class="btn gray small" data-a="a2Skip" id="a2Skip">SKIP</button><button class="btn green" data-a="a2Next" id="a2Next">NEXT ▶</button></div>
+  </div>
+
   <div class="screen" id="settings">
     <h2>SETTINGS</h2>
     <div class="panel">
@@ -278,6 +299,7 @@ body.rm .btn.glow,body.rm .goal.ready,body.rm .cx canvas,body.rm .cx.un:before,b
       <div class="toggle">Reduced motion <button class="btn small" data-a="tMotion" id="tMotion">OFF</button></div>
       <div class="toggle">Language / 語言 <button class="btn small" data-a="tLang" id="tLang">EN</button></div>
       <div class="toggle">Tutorials <button class="btn small blue" data-a="tReplay" id="tReplay">REPLAY</button></div>
+      <div class="toggle" id="a2Row" style="display:none">Add to Home Screen <button class="btn small green" data-a="a2Open">HOW?</button></div>
     </div>
     <div class="small" style="margin-top:10px">Progress saves automatically.</div>
     <button class="btn gray" data-a="back">BACK</button>
@@ -502,7 +524,12 @@ const ZH={
   'JOINS YOUR TEAM!':'加入你的隊伍！','It now fires in every volley.':'之後每輪都會射出','RESERVE UNLOCKED!':'備用區開放！','NOW BRING IT BACK!':'再把它拖回來！',
   'Drag a hero here: it waits safely (reserve heroes don’t fight).':'拖來這裡暫放（不上場）',
   'Drag it back onto the board so it fights again.':'拖回盤子就會上場','SUMMON FOCUS UNLOCKED!':'召喚偏好開放！','Tap a hero: it is summoned {0}× more often.':'點一隻，出現機率 {0} 倍',
-  'Elite Hero (Lv3)':'精英英雄（Lv3）','Legendary Hero (Lv4)':'傳說英雄（Lv4）','??? — merge to discover':'??? — 合成就知道','Achievements':'成就','Starter: {0}':'初始英雄：{0}',': ':'：','FAST ▶▶':'快轉 ▶▶','DRAG & RELEASE':'拖著再放開','NEW DISCOVERY!':'新發現！','TAP TO CONTINUE':'點一下繼續'
+  'Elite Hero (Lv3)':'精英英雄（Lv3）','Legendary Hero (Lv4)':'傳說英雄（Lv4）','??? — merge to discover':'??? — 合成就知道','Achievements':'成就','Starter: {0}':'初始英雄：{0}',': ':'：','FAST ▶▶':'快轉 ▶▶','DRAG & RELEASE':'拖著再放開','NEW DISCOVERY!':'新發現！','TAP TO CONTINUE':'點一下繼續',
+  'Add to Home Screen':'加到主畫面','HOW?':'教我','SKIP':'略過','NEXT ▶':'下一步 ▶','GOT IT!':'知道了！',
+  'Tap Share':'點「分享」','The square with an up arrow at the bottom of Safari. Not there? Tap ⋯ first.':'Safari 下方的方框＋箭頭（沒看到就先點 ⋯）',
+  'Tap "Add to Home Screen"':'點「加入主畫面」','Scroll down the list to find it.':'往下滑就找得到',
+  'Tap Add':'點「加入」','The name is already filled in: 蹦蹦英雄':'名字已經填好：蹦蹦英雄',
+  'Add BONBOOM HERO to your Home Screen for quick access!':'加到主畫面，點一下就能玩！','Come back tomorrow with one tap.':'明天點一下就能回來'
 };
 const ZH_DATA={
   shop:{hp:['厚皮','開局多 1 滴血'],balls:['大彈匣','每輪 +1 顆球'],rate:['一觸即發','+10% 射速'],dmg:['重擊','+10% 傷害'],reroll:['幸運骰','每局多 1 次免費換卡']},
@@ -636,7 +663,7 @@ function defaultSave(){
     unlocked:{banana:true,zappy:true,bean:true,croissant:true,frosty:false,turnip:false,muffin:false,sipsula:false},
     seen:{},fusions:{},heroLv:{},mergeStats:{total:0,bestChain:0,legend:0,quad:0,mega:0},tut:{},mastery:{},legend:[],
     ach:{merge:false,chain:false,lv3:false,lv4:false,lv6:false,lv8:false,max:false,maxSquad:false,fullMax:false,pantheon:false},
-    stats:{runs:0,kills:0,bosses:0},
+    stats:{runs:0,kills:0,bosses:0},a2hs:0,
     daily:{day:'',missions:[]},
     settings:{mute:false,music:true,shake:true,reducedMotion:null,lang:''}};
 }
@@ -3339,7 +3366,7 @@ const UI={
   onState(s){
     const map={MENU:'menu',PAUSED:'pause',UPGRADE:'upgrade',GAME_OVER:'gameover',RESULTS:'results',AD_PLAYING:'adOverlay',BOARD:'board'};
     if(map[s])this.show(map[s]);else this.show(null);
-    if(s==='MENU'){Notify.clear();this.refreshMenu();}
+    if(s==='MENU'){Notify.clear();this.refreshMenu();A2HS.maybe();}
     const inRun=GAMEPLAY[s];
     $('hudPause').style.display=inRun?'block':'none';$('hudSound').style.display=inRun?'block':'none';this.syncSound();
     if(s!=='FIRING')$('hudRecall').style.display='none';
@@ -3535,6 +3562,7 @@ const UI={
     $('msReset').textContent=T('New missions in ~{0}h (local midnight)',h);
   },
   renderSettings(){
+    $('a2Row').style.display=A2HS.eligible()?'flex':'none';
     const S=Save.d.settings;
     $('tSound').textContent=T(S.mute?'OFF':'ON');$('tMusic').textContent=T(S.music?'ON':'OFF');$('tShake').textContent=T(S.shake?'ON':'OFF');
     $('tMotion').textContent=T(reducedMotion()?'ON':'OFF');$('tReplay').textContent=T('REPLAY');
@@ -3623,6 +3651,9 @@ const UI={
       case'rvDone':Reveal.close(false);break;
       case'tutSkip':if(Game.state==='BOARD')Tut.skipLesson();break;
       case'tReplay':Tut.replay();this.toast(T('Tutorials will play again.'));break;
+      case'a2Open':A2HS.open();break;
+      case'a2Next':A2HS.next();break;
+      case'a2Skip':A2HS.close(false);break;
       case'missions':this.back='menu';this.sub('missions');break;
       case'settings':this.back='menu';this.sub('settings');break;
       case'back':if(this.back==='results'){this.show('results');this.showResults();}else{this.show('menu');this.refreshMenu();}break;
@@ -4194,6 +4225,140 @@ window.addEventListener('resize',()=>{resize();paradeCtx=null;});
 /* ============================================================
    Boot
    ============================================================ */
+/* ============================================================
+   iPhone "Add to Home Screen" tutorial — shown once after the first finished run, iOS Safari only, never in combat
+   ============================================================ */
+const A2HS={
+  on:false,step:0,t:0,last:0,raf:0,done:null,img:null,
+  ios(){return /iP(hone|od)/.test(navigator.userAgent)||/iPhone|iPod/.test(navigator.platform||'');},
+  safari(){const ua=navigator.userAgent;return /Safari\//.test(ua)&&/Version\//.test(ua)&&!/CriOS|FxiOS|EdgiOS|OPiOS|GSA\/|YaBrowser|DuckDuckGo|Line\/|FBAN|FBAV|Instagram|MicroMessenger/.test(ua);},
+  standalone(){return navigator.standalone===true||!!(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);},
+  framed(){try{return window.top!==window.self;}catch(e){return true;}}, // CrazyGames and other portals run us in an iframe
+  eligible(){return this.ios()&&this.safari()&&!this.standalone()&&!this.framed();},
+  due(){return this.eligible()&&!Save.d.a2hs&&Save.d.stats.runs>=1;},
+  // called on the main menu; waits for a calm moment (no reveal / other overlay), shows at most once
+  maybe(){if(!this.due())return;setTimeout(()=>{if(this.due()&&!this.on&&Game.state==='MENU'&&UI.cur==='menu'&&!Reveal.on)this.open();},700);},
+  open(after){
+    Save.d.a2hs=Math.max(1,Save.d.a2hs|0);Save.flush(); // counted as seen right away: never shown again automatically
+    if(!this.img){this.img=new Image();this.img.src='apple-touch-icon.png';}
+    this.on=true;this.done=after||null;this.go(0);$('a2hs').classList.add('show');
+    this.last=performance.now();const loop=n=>{if(!this.on)return;this.t+=Math.min(0.05,(n-this.last)/1000);this.last=n;
+      if(this.step<3&&this.t>this.dur()&&!reducedMotion())this.go(this.step+1);this.draw();this.raf=requestAnimationFrame(loop);};
+    this.raf=requestAnimationFrame(loop);
+  },
+  close(finished){if(!this.on)return;this.on=false;cancelAnimationFrame(this.raf);$('a2hs').classList.remove('show');
+    if(finished){Save.d.a2hs=2;Save.flush();}const f=this.done;this.done=null;if(f)f();},
+  dur(){return [3.6,4.2,3.8][this.step]||99;},
+  go(i){this.step=i;this.t=0;const S=[
+      [T('Tap Share'),T('The square with an up arrow at the bottom of Safari. Not there? Tap ⋯ first.')],
+      [T('Tap "Add to Home Screen"'),T('Scroll down the list to find it.')],
+      [T('Tap Add'),T('The name is already filled in: 蹦蹦英雄')],
+      [T('Add BONBOOM HERO to your Home Screen for quick access!'),T('Come back tomorrow with one tap.')]][i];
+    $('a2N').textContent=(i+1)+' / 4';$('a2T').textContent=S[0];$('a2S').textContent=S[1];
+    $('a2Next').textContent=T(i<3?'NEXT ▶':'GOT IT!');$('a2Skip').style.visibility=i<3?'visible':'hidden';
+    [...$('a2Dots').children].forEach((d,k)=>d.classList.toggle('on',k===i));
+    if(i===3)Sound.play('coin');
+  },
+  next(){if(this.step<3)this.go(this.step+1);else this.close(true);},
+  // ---- drawing: a stylised iPhone running Safari (250 × 452 css px) ----
+  draw(){
+    const c=$('a2Cv'),k=Math.min(3,view.dpr*view.s+0.5),W2=250,H2=452;
+    if(c.width!==Math.round(W2*k)){c.width=Math.round(W2*k);c.height=Math.round(H2*k);}
+    const g=c.getContext('2d');g.setTransform(k,0,0,k,0,0);g.clearRect(0,0,W2,H2);lastFont='';
+    const t=reducedMotion()?[2.6,3.2,2.9,1.6][this.step]:this.t,zh=LANG==='zh';
+    // frame
+    g.fillStyle='#0d0a14';rrect(g,0,0,W2,H2,40);g.fill();g.strokeStyle='#5d5378';g.lineWidth=3;rrect(g,1.5,1.5,W2-3,H2-3,39);g.stroke();
+    g.save();rrect(g,9,9,W2-18,H2-18,32);g.clip();
+    const X=9,Y=9,SW=W2-18,SH=H2-18;
+    if(this.step<3)this.page(g,X,Y,SW,SH,zh);
+    if(this.step===0)this.share(g,X,Y,SW,SH,t);
+    if(this.step===1)this.sheet(g,X,Y,SW,SH,t,zh);
+    if(this.step===2)this.confirm(g,X,Y,SW,SH,t,zh);
+    if(this.step===3)this.home(g,X,Y,SW,SH,t);
+    g.restore();
+    g.fillStyle='#0d0a14';rrect(g,W2/2-38,16,76,20,10);g.fill(); // dynamic island
+  },
+  icon(g,x,y,s){const im=this.img;g.save();rrect(g,x,y,s,s,s*0.23);g.clip();
+    if(im&&im.complete&&im.naturalWidth)g.drawImage(im,x,y,s,s);else{g.fillStyle='#8a3ee0';g.fillRect(x,y,s,s);g.drawImage(spriteLv('banana',1,128),x+s*0.1,y+s*0.1,s*0.8,s*0.8);}
+    g.restore();},
+  label(g,s,x,y,size,col,align,w){g.font=`${w||700} ${size}px system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif`;lastFont='';g.textAlign=align||'center';g.textBaseline='middle';g.fillStyle=col;g.fillText(s,x,y);},
+  finger(g,x,y,t){if(t<0)return;const p=Math.min(1,t/0.25),press=t>0.3&&t<0.6;
+    g.save();g.globalAlpha=Math.min(1,p*1.5);
+    if(press){g.strokeStyle='rgba(255,215,106,.9)';g.lineWidth=3;g.beginPath();g.arc(x,y,10+(t-0.3)*60,0,7);g.stroke();}
+    g.fillStyle='rgba(255,255,255,.92)';g.strokeStyle='#2a1a4a';g.lineWidth=2;g.beginPath();g.arc(x+6,y+14-(press?3:0),11,0,7);g.fill();g.stroke();g.restore();},
+  pulse(g,x,y,w,h,r,t){const a=0.55+0.45*Math.sin(t*7);g.save();g.strokeStyle=`rgba(255,215,106,${a})`;g.lineWidth=3.5;g.shadowColor='#ffd76a';g.shadowBlur=12;rrect(g,x,y,w,h,r);g.stroke();g.restore();},
+  arrow(g,x,y,t){const b=Math.sin(t*6)*5;g.save();g.translate(x,y-26+b);g.fillStyle='#ffd76a';g.strokeStyle='#5a2a00';g.lineWidth=2;
+    g.beginPath();g.moveTo(0,14);g.lineTo(-12,0);g.lineTo(-5,0);g.lineTo(-5,-14);g.lineTo(5,-14);g.lineTo(5,0);g.lineTo(12,0);g.closePath();g.fill();g.stroke();g.restore();},
+  // the game as it looks in Safari, with the bottom address bar + toolbar
+  page(g,X,Y,W,H,zh){
+    let gr=g.createLinearGradient(0,Y,0,Y+H);gr.addColorStop(0,'#2a0f55');gr.addColorStop(1,'#140726');g.fillStyle=gr;g.fillRect(X,Y,W,H);
+    this.label(g,'9:41',X+30,Y+18,12,'#fff','center',800);
+    txt(g,'BONBOOM',X+W/2,Y+70,26,'#ffe14d');txt(g,'HERO!',X+W/2,Y+98,26,'#ffe14d');this.label(g,'蹦蹦英雄：彈珠超進化',X+W/2,Y+124,11,'#fff','center',900);
+    const cols=['#ff4f7b','#ffad1f','#ff4f7b','#5ec8ff'];for(let i=0;i<4;i++){g.fillStyle=cols[i];rrect(g,X+22+i*50,Y+150+(i%2)*26,40,24,7);g.fill();this.label(g,String([9,18,3,12][i]),X+42+i*50,Y+162+(i%2)*26,12,'#fff','center',900);}
+    g.drawImage(spriteLv('banana',1,128),X+W/2-24,Y+250,48,48);
+    g.fillStyle='#3ddc84';rrect(g,X+W/2-50,Y+215,100,14,6);g.fill();
+    // Safari chrome (bottom)
+    g.fillStyle='rgba(246,246,248,.97)';g.fillRect(X,Y+H-84,W,84);
+    g.fillStyle='#e3e3e8';rrect(g,X+12,Y+H-78,W-24,30,10);g.fill();
+    this.label(g,'yunchieh0227.github.io',X+W/2,Y+H-63,11,'#111','center',600);
+    const ty=Y+H-30,ic=[X+28,X+70,X+W/2,X+W-70,X+W-28];g.strokeStyle='#0a7aff';g.lineWidth=2;g.lineCap='round';g.lineJoin='round';
+    g.beginPath();g.moveTo(ic[0]+4,ty-7);g.lineTo(ic[0]-3,ty);g.lineTo(ic[0]+4,ty+7);g.stroke();
+    g.beginPath();g.moveTo(ic[1]-4,ty-7);g.lineTo(ic[1]+3,ty);g.lineTo(ic[1]-4,ty+7);g.stroke();
+    this.shareGlyph(g,ic[2],ty);
+    g.beginPath();g.moveTo(ic[3]-8,ty-7);g.quadraticCurveTo(ic[3]-3,ty-9,ic[3],ty-6);g.quadraticCurveTo(ic[3]+3,ty-9,ic[3]+8,ty-7);g.lineTo(ic[3]+8,ty+7);g.quadraticCurveTo(ic[3]+3,ty+5,ic[3],ty+8);g.quadraticCurveTo(ic[3]-3,ty+5,ic[3]-8,ty+7);g.closePath();g.stroke();
+    g.strokeRect(ic[4]-7,ty-5,12,12);g.beginPath();g.moveTo(ic[4]-4,ty-8);g.lineTo(ic[4]+8,ty-8);g.lineTo(ic[4]+8,ty+4);g.stroke();
+  },
+  shareGlyph(g,x,y){g.beginPath();g.moveTo(x-5,y-3);g.lineTo(x-8,y-3);g.lineTo(x-8,y+9);g.lineTo(x+8,y+9);g.lineTo(x+8,y-3);g.lineTo(x+5,y-3);g.stroke();
+    g.beginPath();g.moveTo(x,y+3);g.lineTo(x,y-11);g.moveTo(x-4,y-7);g.lineTo(x,y-11);g.lineTo(x+4,y-7);g.stroke();},
+  share(g,X,Y,W,H,t){const x=X+W/2,y=Y+H-30;this.pulse(g,x-17,y-17,34,34,10,t);this.arrow(g,x,y-20,t);this.finger(g,x,y,t-2.2);},
+  sheetRows(zh){return zh?['拷貝','加入閱讀列表','加入書籤','加入喜好項目','在頁面上尋找','加入主畫面','標示']:['Copy','Add to Reading List','Add Bookmark','Add to Favorites','Find on Page','Add to Home Screen','Markup'];},
+  sheet(g,X,Y,W,H,t,zh){
+    const up=Math.min(1,t/0.5),e=1-Math.pow(1-up,3),top=Y+H-(H-120)*e;
+    g.fillStyle=`rgba(0,0,0,${0.35*e})`;g.fillRect(X,Y,W,H);
+    g.fillStyle='#f2f2f7';rrect(g,X,top,W,H,16);g.fill();
+    this.icon(g,X+14,top+14,34);this.label(g,'蹦蹦英雄',X+56,top+24,12,'#111','left',800);this.label(g,'yunchieh0227.github.io',X+56,top+40,10,'#8e8e93','left',500);
+    const apps=['#34c759','#0a84ff','#ff9f0a','#bf5af2'];for(let i=0;i<4;i++){g.fillStyle=apps[i];rrect(g,X+18+i*56,top+62,40,40,10);g.fill();}
+    const sc=t<1?0:Math.min(1,(t-1)/1.1),off=(1-Math.pow(1-sc,3))*92,rows=this.sheetRows(zh),ry=top+118-off;
+    g.save();g.beginPath();g.rect(X,top+112,W,H-112);g.clip();
+    g.fillStyle='#fff';rrect(g,X+10,ry,W-20,rows.length*34,12);g.fill();
+    rows.forEach((r,i)=>{const yy=ry+i*34;if(i)g.fillStyle='#e5e5ea',g.fillRect(X+22,yy,W-44,1);this.label(g,r,X+24,yy+17,12.5,'#111','left',i===5?800:500);
+      g.strokeStyle='#3a3a3c';g.lineWidth=1.6;const ix=X+W-38;
+      if(i===5){rrect(g,ix-7,yy+10,14,14,3.5);g.stroke();g.beginPath();g.moveTo(ix,yy+13);g.lineTo(ix,yy+21);g.moveTo(ix-4,yy+17);g.lineTo(ix+4,yy+17);g.stroke();}
+      else{g.beginPath();g.arc(ix,yy+17,5,0,7);g.stroke();}});
+    if(t>2.1){const yy=ry+5*34;this.pulse(g,X+12,yy+1,W-24,32,10,t);this.finger(g,X+W/2+40,yy+17,t-2.9);}
+    g.restore();
+    if(sc>0&&sc<1){g.fillStyle='rgba(0,0,0,.25)';rrect(g,X+W-8,top+130+sc*60,3,40,2);g.fill();}
+  },
+  confirm(g,X,Y,W,H,t,zh){
+    g.fillStyle='#f2f2f7';rrect(g,X,Y+44,W,H,16);g.fill();
+    this.label(g,zh?'取消':'Cancel',X+14,Y+66,12.5,'#0a7aff','left',500);this.label(g,zh?'加入主畫面':'Add to Home Screen',X+W/2+4,Y+66,zh?12.5:10.5,'#111','center',800);
+    this.label(g,zh?'加入':'Add',X+W-14,Y+66,13,'#0a7aff','right',800);
+    g.fillStyle='#fff';rrect(g,X+10,Y+90,W-20,74,12);g.fill();this.icon(g,X+20,Y+100,54);
+    g.fillStyle='#e5e5ea';g.fillRect(X+84,Y+127,W-104,1);
+    const nm='蹦蹦英雄',n=Math.min(nm.length,Math.floor(t/0.18));this.label(g,nm.slice(0,Math.max(n,t>0.8?4:n)),X+86,Y+113,14,'#111','left',700);
+    this.label(g,'https://yunchieh0227.github.io/…',X+86,Y+145,9.5,'#8e8e93','left',500);
+    this.label(g,zh?'會在主畫面加入一個圖像，方便快速打開。':'An icon will be added to your Home Screen.',X+16,Y+180,9.5,'#8e8e93','left',500);
+    if(t>0.5&&t<2.2){this.pulse(g,X+80,Y+98,W-96,26,8,t);g.fillStyle='#ffd76a';rrect(g,X+60,Y+206,W-80,26,13);g.fill();
+      this.label(g,zh?'↑ 主畫面上的名字':'↑ the Home Screen name',X+W/2+10,Y+219,11.5,'#3a1d00','center',900);}
+    if(t>2.2){this.pulse(g,X+W-48,Y+54,42,24,8,t);g.save();g.translate(X+W-27,Y+92);g.rotate(Math.PI);this.arrow(g,0,0,t);g.restore();this.finger(g,X+W-27,Y+66,t-2.9);}
+  },
+  home(g,X,Y,W,H,t){
+    let gr=g.createLinearGradient(X,Y,X+W,Y+H);gr.addColorStop(0,'#3b6cff');gr.addColorStop(0.55,'#9b4dff');gr.addColorStop(1,'#ff6fae');g.fillStyle=gr;g.fillRect(X,Y,W,H);
+    this.label(g,'9:41',X+30,Y+18,12,'#fff','center',800);
+    const cols=['#ffd60a','#34c759','#0a84ff','#ff453a','#5e5ce6','#64d2ff','#ff9f0a','#30d158','#bf5af2','#ff375f','#ffffff','#8e8e93'];
+    const gx=i=>X+22+(i%4)*52,gy=i=>Y+60+((i/4)|0)*70,slot=9;
+    for(let i=0;i<16;i++){if(i===slot)continue;g.globalAlpha=0.85;g.fillStyle=cols[i%cols.length];rrect(g,gx(i),gy(i),40,40,10);g.fill();g.globalAlpha=1;}
+    g.fillStyle='rgba(255,255,255,.28)';rrect(g,X+14,Y+H-74,W-28,60,22);g.fill();
+    for(let i=0;i<4;i++){g.fillStyle=cols[(i*3+1)%cols.length];rrect(g,X+26+i*52,Y+H-64,40,40,10);g.fill();}
+    const f=Math.min(1,t/0.9),e=1-Math.pow(1-f,3),tx=gx(slot),ty=gy(slot),sx=X+W/2-50,sy=Y+H/2-90;
+    const x=sx+(tx-sx)*e,y=sy+(ty-sy)*e-Math.sin(f*Math.PI)*40,sz=100+(40-100)*e,bo=f>=1?Math.max(0,Math.sin((t-0.9)*14)*Math.exp(-(t-0.9)*4))*6:0;
+    this.icon(g,x-bo/2,y-bo/2,sz+bo);
+    if(f>=1){this.label(g,'蹦蹦英雄',tx+20,ty+52,10.5,'#fff','center',700);
+      for(let i=0;i<10;i++){const a=i*0.63+t*1.5,r=30+((t*40+i*13)%26);g.globalAlpha=Math.max(0,1-(t-0.9)/3)*0.9;g.fillStyle=i%2?'#ffe14d':'#fff';
+        g.beginPath();g.arc(tx+20+Math.cos(a)*r,ty+20+Math.sin(a)*r,2.2,0,7);g.fill();}g.globalAlpha=1;}
+  }
+};
+
 async function boot(){
   resize();
   setupInput(cv);
@@ -4215,7 +4380,7 @@ async function boot(){
 }
 
 /* test/debug hooks (read-only use in production) */
-window.BONK={Game,CG,Save,Sound,Meta,Upgrades,Fusion,Board,Input,CONFIG,balls,parts,texts,fx,view,Tut,Notify,Reveal,UI,Cannon,HeroEvents,MUZZLE,Mastery,Daily,drawUnit,spriteLv,UNLOCK_COST,
+window.BONK={Game,CG,Save,Sound,A2HS,Meta,Upgrades,Fusion,Board,Input,CONFIG,balls,parts,texts,fx,view,Tut,Notify,Reveal,UI,Cannon,HeroEvents,MUZZLE,Mastery,Daily,drawUnit,spriteLv,UNLOCK_COST,
   get R(){return R;},tick,render,
   advance(sec,fps){const dt=1/fps;let n=Math.round(sec*fps);while(n-->0)tick(dt);},
   logical:{W,H,LX,LY,GATE_Y,TOP,ROW_H,CELL,DANGER_Y}};

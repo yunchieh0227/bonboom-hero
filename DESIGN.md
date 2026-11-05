@@ -1,4 +1,4 @@
-# BONKAGEDDON — Design & Technical Review
+# BONBOOM HERO! (formerly BONKAGEDDON) — Design & Technical Review
 
 Labels used throughout:
 **[PLATFORM]** confirmed from official CrazyGames docs (fetched 2026-11-04) ·

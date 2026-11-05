@@ -1,4 +1,6 @@
-# BONKAGEDDON
+# BONBOOM HERO! 蹦蹦英雄：彈珠超進化
+
+(Formerly "BONKAGEDDON". Internal save keys such as `bonkageddon_save` keep the old name so existing saves load.)
 
 Ricochet roguelite for CrazyGames. **The shippable build is the single file `index.html`** (≈230 KB, no build step). Its only external script is the CrazyGames SDK v3.
 
@@ -197,10 +199,17 @@ Two separate tracks:
   - Old saves migrate v1 → v4 as before. Write failures (quota, private mode) are caught.
   - `navigator.storage.persist()` asks the browser not to evict the data.
 
+- **Add-to-Home-Screen tutorial (iPhone Safari only):**
+  - **When it opens:** once, on the main menu after the first finished run. It waits about 0.7 s, and never opens during combat, on the results screen, or over a hero reveal.
+  - **Steps:** a 4-step animated mock of Safari: Share → "Add to Home Screen" in the share sheet → confirm with the name 蹦蹦英雄 prefilled → the icon lands on the home screen.
+  - **Controls:** steps advance automatically, or with NEXT. SKIP is available until the last step.
+  - **Saved flag:** `a2hs` (0 = never shown, 1 = shown or skipped, 2 = finished). It is saved the moment the tutorial opens. Settings → "Add to Home Screen" replays it.
+  - **Where it does not appear:** desktop, Android, Chrome/Firefox/in-app browsers on iPhone, already-installed Home Screen mode, and iframes (CrazyGames).
+
 ## Run the tests
 
 ```
-python tests/run_tests.py <output_dir> [functional touch physics caps content balance restart persist save sdk realsdk merge tutorial onboard phase5 evolution i18n shots]
+python tests/run_tests.py <output_dir> [functional touch physics caps content balance restart persist save a2hs sdk realsdk merge tutorial onboard phase5 evolution i18n shots]
 ```
 Needs Chrome at the default install path and `pip install websocket-client`. Screenshots are written to `<output_dir>/shots`.
 

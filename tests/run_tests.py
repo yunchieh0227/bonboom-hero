@@ -1,4 +1,4 @@
-"""BONKAGEDDON automated test suite — headless Chrome over CDP.
+"""BONBOOM HERO! automated test suite — headless Chrome over CDP.
 Usage: python tests/run_tests.py <scratch_dir> [only_test_name ...]
 """
 import json, os, re, sys, time
@@ -615,6 +615,84 @@ def main():
             c.pump()
             check("no JS errors (save)", not c.errors(), c.errors(False))
 
+        # ---------------- iPhone Add-to-Home-Screen tutorial + branding ----------------
+        if want("a2hs"):
+            IOS = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1"
+            CRIOS = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/131.0 Mobile/15E148 Safari/604.1"
+            ANDROID = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Mobile Safari/537.36"
+            fresh(c)
+            desk = c.ev("navigator.userAgent")
+            b = c.ev("""(()=>{const m=n=>{const e=document.querySelector('meta[name="'+n+'"]');return e&&e.content};
+                return {title:document.title,logo:document.querySelector('#menu .logo').textContent,zh:document.querySelector('#menu .brandZh').textContent,app:m('apple-mobile-web-app-title'),name:m('application-name')}})()""")
+            check("branding: title, menu logo and Chinese name; Home Screen label 蹦蹦英雄",
+                  "BONBOOM HERO!" in b["title"] and "蹦蹦英雄：彈珠超進化" in b["title"] and b["logo"] == "BONBOOMHERO!" and b["zh"] == "蹦蹦英雄：彈珠超進化" and b["app"] == "蹦蹦英雄" and b["name"] == "蹦蹦英雄", b)
+            check("old display name is gone (save key kept)", "BONKA-" not in c.ev("document.documentElement.outerHTML") and "GEDDON<" not in c.ev("document.documentElement.outerHTML"))
+
+            def boot(ua, plat, runs, wait=1.3):
+                c.send("Emulation.setUserAgentOverride", userAgent=ua, platform=plat)
+                c.nav("http://127.0.0.1:8765/tests/", wait_expr="document.readyState==='complete'"); c.ev("localStorage.clear()")
+                c.nav(BASE + "?nosdk=1&seed=42")
+                c.ev(f"const S=BONK.Save.d;for(const k of ['aim','gate','summon','merge','boardIntro','reserve','focus','codex'])S.tut[k]=1;S.tutorialDone=true;S.stats.runs={runs};S.coins=321;BONK.Save.flush()")
+                c.nav(BASE + "?nosdk=1&seed=42"); c.ev(BOT_JS); time.sleep(wait)
+
+            boot(desk, "Win32", 3)
+            check("desktop: never shown, no Settings entry", c.ev("BONK.A2HS.on") is False and c.ev("BONK.A2HS.eligible()") is False and c.ev("BONK.UI.renderSettings(),document.getElementById('a2Row').style.display") == "none")
+            boot(ANDROID, "Linux armv8l", 3)
+            check("Android: never shown", c.ev("BONK.A2HS.on") is False and c.ev("BONK.Save.d.a2hs") == 0)
+            boot(CRIOS, "iPhone", 3)
+            check("Chrome on iPhone (different share flow): not shown", c.ev("BONK.A2HS.on") is False)
+            sid = c.send("Page.addScriptToEvaluateOnNewDocument", source="Object.defineProperty(Navigator.prototype,'standalone',{get:()=>true,configurable:true});")["identifier"]
+            boot(IOS, "iPhone", 3)
+            check("already running from the Home Screen: not shown, no Settings entry", c.ev("BONK.A2HS.on") is False and c.ev("BONK.A2HS.eligible()") is False)
+            c.send("Page.removeScriptToEvaluateOnNewDocument", identifier=sid)
+
+            boot(IOS, "iPhone", 0)
+            check("iPhone Safari before any finished run: not shown", c.ev("BONK.A2HS.on") is False and c.ev("BONK.A2HS.eligible()") is True)
+            # real flow: finish the first run -> results (no interruption there) -> menu -> tutorial
+            c.ev("BONK.Game.startRun();BONK.R.hp=0;BONK.Game.fire(-1.3)"); st = finish_turn(c)
+            if st == "GAME_OVER": c.ev("BONK.Game.toResults()")
+            time.sleep(1.2)
+            check("results screen after the run is not interrupted", c.ev("BONK.Game.state") == "RESULTS" and c.ev("BONK.A2HS.on") is False and c.ev("BONK.Save.d.stats.runs") == 1)
+            c.ev("document.querySelector('#results [data-a=menu]').click()"); time.sleep(1.2)
+            check("back on the menu after the first run: tutorial opens", c.ev("BONK.A2HS.on") is True and c.ev("document.getElementById('a2hs').classList.contains('show')"))
+            check("shown-once flag is saved immediately", json.loads(c.ev("localStorage.getItem('bonkageddon_save')"))["a2hs"] >= 1)
+            check("step 1 = Safari Share button", c.ev("BONK.A2HS.step") == 0 and "Share" in c.ev("document.getElementById('a2T').textContent"))
+            c.ev("document.getElementById('a2Next').click()")
+            check("step 2 = Add to Home Screen in the share sheet", "Add to Home Screen" in c.ev("document.getElementById('a2T').textContent"))
+            c.ev("document.getElementById('a2Next').click()")
+            check("step 3 = confirm with Add, name prefilled 蹦蹦英雄", "Add" in c.ev("document.getElementById('a2T').textContent") and "蹦蹦英雄" in c.ev("document.getElementById('a2S').textContent"))
+            c.ev("document.getElementById('a2Next').click()")
+            check("step 4 = success, skip hidden, GOT IT button", "Home Screen" in c.ev("document.getElementById('a2T').textContent") and c.ev("document.getElementById('a2Skip').style.visibility") == "hidden")
+            c.ev("document.getElementById('a2Next').click()")
+            check("GOT IT closes it and marks it done; the menu still works", c.ev("BONK.A2HS.on") is False and c.ev("BONK.Save.d.a2hs") == 2 and c.ev("BONK.Game.state") == "MENU")
+            c.ev("BONK.Game.setState('MENU')"); time.sleep(1.0)
+            check("not shown again on the next menu visit", c.ev("BONK.A2HS.on") is False)
+            c.nav(BASE + "?nosdk=1"); time.sleep(1.2)
+            check("not shown again after reopening the game", c.ev("BONK.A2HS.on") is False and c.ev("BONK.Save.d.coins") >= 321)
+            c.ev("document.querySelector('[data-a=settings]').click()")
+            check("Settings has the Home Screen entry on iPhone Safari", c.ev("document.getElementById('a2Row').style.display") == "flex")
+            c.ev("document.querySelector('#a2Row [data-a=a2Open]').click()")
+            check("Settings entry replays the tutorial", c.ev("BONK.A2HS.on") is True and c.ev("BONK.A2HS.step") == 0)
+            c.ev("document.getElementById('a2Skip').click()")
+            check("skip closes it", c.ev("BONK.A2HS.on") is False)
+
+            boot(IOS, "iPhone", 2)
+            check("returning player (runs >= 1): opens on the menu", c.ev("BONK.A2HS.on") is True)
+            c.ev("document.getElementById('a2Skip').click()")
+            c.nav(BASE + "?nosdk=1"); time.sleep(1.2)
+            check("skipped once -> never shown automatically again", c.ev("BONK.A2HS.on") is False and c.ev("BONK.Save.d.a2hs") == 1)
+            boot(IOS, "iPhone", 2, wait=0)
+            c.ev("BONK.Game.startRun()"); time.sleep(1.2)
+            check("due, but the player is in combat: not shown", c.ev("BONK.A2HS.on") is False and c.ev("BONK.Game.state") == "AIMING" and c.ev("BONK.Save.d.a2hs") == 0)
+            # old save without the new field
+            c.nav("http://127.0.0.1:8765/tests/", wait_expr="document.readyState==='complete'")
+            c.ev("localStorage.setItem('bonkageddon_save', JSON.stringify({v:4,coins:888,unlocked:{frosty:true},stats:{runs:5,kills:1,bosses:0},tutorialDone:true}))")
+            c.nav(BASE + "?nosdk=1"); time.sleep(0.3)
+            check("old save without the flag loads (coins/heroes kept)", c.ev("BONK.Save.d.coins") == 888 and c.ev("BONK.Save.d.unlocked.frosty") is True and c.ev("BONK.Save.d.a2hs") in (0, 1))
+            c.send("Emulation.setUserAgentOverride", userAgent=desk, platform="Win32")
+            c.pump()
+            check("no JS errors (a2hs)", not c.errors(), c.errors(False))
+
         # ---------------- SDK adapter ----------------
         if want("sdk"):
             c.send("Network.setBlockedURLs", urls=["*sdk.crazygames.com*"])
@@ -949,7 +1027,7 @@ def main():
             c.ev("BONK.Game.pause()"); c.screenshot(os.path.join(zshots, "06_pause.png"))
             c.ev("BONK.Game.quit()"); time.sleep(0.4); c.screenshot(os.path.join(zshots, "07_menu.png"))
             leftovers = set(leftovers0)
-            scan = r"""(()=>{const ok=/^(BONKA-|GEDDON|EN|Lv\d.*|LV \d.*|BOSS.*|Boss.*|HP|XP|中文 \/ EN|Language \/ 語言)$/;const out=[];
+            scan = r"""(()=>{const ok=/^(BONBOOM|HERO!|蹦蹦英雄：彈珠超進化|EN|Lv\d.*|LV \d.*|BOSS.*|Boss.*|HP|XP|中文 \/ EN|Language \/ 語言)$/;const out=[];
                const tw=document.createTreeWalker(document.getElementById('ui'),NodeFilter.SHOW_TEXT);let n;
                while((n=tw.nextNode())){const t=n.nodeValue.trim();if(!t)continue;let el=n.parentElement,vis=true;
                  for(let p=el;p;p=p.parentElement){if(getComputedStyle(p).display==='none'){vis=false;break;}}
