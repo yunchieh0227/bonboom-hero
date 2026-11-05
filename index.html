@@ -532,7 +532,7 @@ const ZH={
   'COLLECTION COMPLETE!':'全部收集完成！','COLLECTION UPDATED!':'圖鑑更新了！','Unlocked heroes are saved forever and join your summons.':'永久解鎖，之後召喚抽得到',
   'MERGE BOARD UNLOCKED!':'合成盤開放了！','Combine heroes to evolve!':'把英雄合在一起就會進化！','Almost! Drop it next to its twins':'差一點！放到一樣的英雄旁邊',
   'DRAG TO MERGE!':'拖過去合成！','Put 3 matching heroes side by side!':'把 3 隻一樣的英雄排在一起！','×{0} → ×{1} damage':'傷害 ×{0} → ×{1}',
-  '5 HEROES = DOUBLE EVOLUTION!':'5 隻一起 = 連升兩級！','4 HEROES = BONUS CORE!':'4 隻一起 = 送能量核心！','RELEASE TO FIRE':'放手發射','DRAG TO AIM':'拖著瞄準',
+  '5 HEROES = DOUBLE EVOLUTION!':'5 隻一起 = 變 2 隻升級！','4 HEROES = BONUS CORE!':'4 隻一起 = 送能量核心！','RELEASE TO FIRE':'放手發射','DRAG TO AIM':'拖著瞄準',
   'AIM THROUGH ×{0}!':'瞄準 ×{0} 射過去！','MEGA MERGE!':'超級合成！','EVOLVED!':'進化啦！','+1 POWER CORE':'+1 能量核心','Permanent upgrade! It works in every run.':'永久強化，每局都有效',
   'NEW HERO AVAILABLE!':'有新英雄可以買了！','NEXT HERO':'下一位英雄','HERO READY TO UNLOCK!':'錢夠了，可以解鎖英雄！','{0} COINS UNTIL NEXT HERO!':'再存 {0} 金幣就能解鎖下一隻！',
   'both Lv2+ in one run':'同一局兩隻都到 Lv2','Best: Lv{0}':'最高：Lv{0}','BASIC ATTACK':'基本攻擊','Bouncing hero ball. Merging raises its damage, size and ability.':'會反彈的球，合成越多越強',
@@ -556,6 +556,9 @@ const ZH={
   'Drag it back onto the board so it fights again.':'拖回盤子就會上場','SUMMON FOCUS UNLOCKED!':'召喚偏好開放！','Tap a hero: it is summoned {0}× more often.':'點一隻，出現機率 {0} 倍',
   'Elite Hero (Lv3)':'精英英雄（Lv3）','Legendary Hero (Lv4)':'傳說英雄（Lv4）','??? — merge to discover':'??? — 合成就知道','Achievements':'成就','Starter: {0}':'初始英雄：{0}',': ':'：','FAST ▶▶':'快轉 ▶▶','DRAG & RELEASE':'拖著再放開','NEW DISCOVERY!':'新發現！','TAP TO CONTINUE':'點一下繼續',
   'Add to Home Screen':'加到主畫面','HOW?':'教我','SKIP':'略過','NEXT ▶':'下一步 ▶','GOT IT!':'知道了！',
+  'MERGE MORE AT ONCE!':'一次合更多，更賺！','3 → 1 hero, +1 level':'3 隻 → 合成 1 隻，升 1 級',
+  '4 → +1 level + Power Core (+{0}% dmg)':'4 隻 → 升級，再送能量核心（傷害 +{0}%）','5 → 2 heroes, both +1 level':'5 隻 → 變 2 隻，兩隻都升級',
+  'NEW FUSION: {0}':'新融合：{0}',
   'Open in your browser':'用瀏覽器開比較好玩','Sound and saved progress may not work inside this app.':'在這個 App 裡面玩，可能沒聲音、進度也存不住',
   'OPEN IN BROWSER':'用瀏覽器開','COPY LINK':'複製連結','PLAY HERE ANYWAY':'先在這裡玩','Link copied!':'連結複製好了！',
   'Tap ⋯ in the corner, then "Open in Safari"':'點右上角或右下角的 ⋯\n選「用 Safari 開啟」',
@@ -1350,7 +1353,7 @@ const Game={
 
   /* ---------- Run lifecycle ---------- */
   newRun(){
-    balls.clear();parts.clear();texts.clear();fx.clear();Board.reset();Tut.reset();
+    balls.clear();parts.clear();texts.clear();fx.clear();Board.reset();Tut.reset();CodexFly.reset();
     const S=Save.d,seed=(QS.has('seed')?(+QS.get('seed')|0):(Date.now()^(Math.random()*1e9))>>>0);
     const firstRun=!S.tutorialDone&&S.stats.runs===0;
     R={seed,rng:mulberry32(seed),firstRun,wave:1,turnInWave:0,turn:0,time:0,
@@ -1689,7 +1692,7 @@ const Game={
   closeBoard(){
     if(this.state!=='BOARD')return;
     Tut.onBoardClose();
-    Board.finishAll();Board.cancel();
+    Board.finishAll();Board.dropCards();Board.cancel();
     const hold=R.passiveHold;R.passiveHold=false; // right after the merge lesson the passive pick waits for the next board visit
     if(R.pendingPassive>0&&!hold){this.openUpgrade();return;}
     this.setState('AIMING');
@@ -2385,7 +2388,6 @@ const Tut={
     if(!b)return;b.t+=dt;if(b.retry>0)b.retry-=dt;
     if(b.kind==='summon'){
       if(b.stage==='flying'&&b.released&&!Board.cur&&!Board.anims.length){b.stage='card';b.t=0;b.u=this.lastSummon||null;Sound.play('revealHit');}
-      else if(b.stage==='card'&&b.t>=4.2)this.finishSummon();
       return;
     }
     if(b.stage==='intro'&&b.t>=INTRO_DUR)this.endIntro();
@@ -2393,7 +2395,7 @@ const Tut={
       b.stage='drag';b.t=0;b.sig=this.sig();const h=Board.hint;
       if(h)this.aim(h.from,h.to,h.cells);else this.aim(b.plan.s,b.plan.t,null);
       UI.showBoard();
-    }else if(b.stage==='celebrate'&&!Board.cur&&!Board.anims.length&&!Board.banner){b.cel+=dt;if(b.cel>=CEL_DUR)this.finishBoard(true);}
+    }else if(b.stage==='celebrate'&&!Board.cur&&!Board.anims.length&&!Board.banner)b.cel+=dt; // stays until tapped (it explains 4/5 merges)
   },
   finishSummon(){
     const b=this.bt;if(!b||b.kind!=='summon')return;this.bt=null;this.complete('summon');
@@ -2707,6 +2709,9 @@ const Board={
   set(i,u){if(i>=RES0)R.reserve[i-RES0]=u;else R.board[i]=u;},
   snap(){const a=new Array(BN+R.reserve.length);for(let i=0;i<BN;i++){const u=R.board[i];a[i]=u?{id:u.id,lv:u.lv}:null;}
     for(let k=0;k<R.reserve.length;k++){const u=R.reserve[k];a[BN+k]=u?{id:u.id,lv:u.lv}:null;}return a;},
+  // a new-hero card is on screen or about to be: leaving the board is not offered until the player has read it
+  cardsPending(){return !!this.intro||this.introQ.length>0||(!!R&&R.pendingSummons>0&&!Tut.holdSummons());},
+  dropCards(){this.intro=null;this.introQ.length=0;},
   busy(){return !!this.cur||this.anims.length>0||!!this.intro||this.introQ.length>0||(R&&R.pendingSummons>0&&!Tut.holdSummons());},
   introQ:[],intro:null,
   open(){this.sel=-1;this.drag=null;this.hover=-1;this.preview=null;this.idle=0;this.computeHint();},
@@ -2735,7 +2740,7 @@ const Board={
       let core=false,coreCoins=0;
       if(n===4){if((R.cores||0)<M.coreMax){R.cores=(R.cores||0)+1;core=true;}else{coreCoins=M.fullCoins;R.bonusCoins=(R.bonusCoins||0)+coreCoins;}}
       this.anims.push({type:'merge',before,take,dest:d,dest2:d2,n,core,id:u.id,lv:nu.lv,chain:k,t:0,fired:0,coins:coreCoins});
-      this.onMerged(nu,n);k++;
+      this.onMerged(nu,n,d);k++;
       q.unshift(d);if(d2>=0)q.push(d2);
     }
     if(k){
@@ -2745,14 +2750,14 @@ const Board={
     }
     return k;
   },
-  onMerged(u,n){
+  onMerged(u,n,cell){
     HeroEvents.emit('HERO_LEVEL_EVOLVED',{id:u.id,lv:u.lv});
     const S=Save.d;R.merges++;Meta.track('merges',1);S.mergeStats.total++;
     if(n===4){S.mergeStats.quad++;R.quads=(R.quads||0)+1;}if(n===5){S.mergeStats.mega++;R.megas=(R.megas||0)+1;}
     Tut.onMerge(u,n);
     if(u.lv>R.bestLv){R.bestLv=u.lv;R.bestId=u.id;}
     const firstTime=(S.heroLv[u.id]||0)<u.lv;
-    if(firstTime)S.heroLv[u.id]=u.lv;
+    if(firstTime){S.heroLv[u.id]=u.lv;CodexFly.push({kind:'evo',id:u.id,lv:u.lv,cell});}
     Mastery.gain(u.id,CONFIG.mastery.mergeXp(u.lv,n));
     if(firstTime&&[4,6,8].indexOf(u.lv)>=0)Notify.push(T('NEW EVOLUTION: {0} {1} — {2}!',HEROES[u.id].name,lvName(u.lv),gearName(u.id,u.lv)),{style:'gold',pri:3,dur:2.8});
     if(u.lv>=9){const made=n===5?2:1;S.mergeStats.legend+=made;R.maxMade=(R.maxMade||0)+made;
@@ -2789,7 +2794,8 @@ const Board={
     Mastery.gain(id,CONFIG.mastery.summonXp(lv));
     R.summons++;R.dry++;
     const S=Save.d,newType=!R.board.concat(R.reserve).some(u=>u&&u.id===id),firstEver=!S.seen[id];
-    if(!S.seen[id]||(S.heroLv[id]||0)<lv){S.seen[id]=true;S.heroLv[id]=Math.max(lv,S.heroLv[id]||0);Save.dirty();}
+    const codexNew=!S.seen[id]||(S.heroLv[id]||0)<lv;
+    if(codexNew){S.seen[id]=true;S.heroLv[id]=Math.max(lv,S.heroLv[id]||0);Save.dirty();}
     Tut.onSummoned(id,lv,newType&&id!==R.starter,firstEver);
     let cell=tp?tp.s:R.board.indexOf(null);
     if(cell<0){const k=R.reserve.indexOf(null);if(k>=0)cell=RES0+k;}
@@ -2801,6 +2807,7 @@ const Board={
     this.set(cell,this.mk(id,lv));
     const runFirst=!R.runSeen[id];R.runSeen[id]=true; // counted only once the hero really lands on the board
     this.anims.push({type:'summon',before,cell,id,lv,t:0,fired:0,dup:!runFirst});
+    if(codexNew)CodexFly.push({kind:firstEver?'hero':'evo',id,lv,cell});
     if(!runFirst)HeroEvents.emit('HERO_DUPLICATE_SUMMON',{id,lv});
     else if(!(Tut.bt&&Tut.bt.kind==='summon'))HeroEvents.emit('HERO_FIRST_RUN_SUMMON',{id,lv,firstEver});
     this.resolveAt(cell);
@@ -2859,7 +2866,7 @@ const Board={
     if(Game.state!=='BOARD'||this.fusionsAvailable().indexOf(fid)<0)return false;
     this.finishAll();this.cancel();
     const F=FUSIONS[fid];R.fusionsActive[fid]=true;Tut.complete('fusion');
-    const isNew=!Save.d.fusions[fid];Save.d.fusions[fid]=true;Save.dirty();if(isNew)HeroEvents.emit('HERO_FUSION_DISCOVERED',{id:fid});
+    const isNew=!Save.d.fusions[fid];Save.d.fusions[fid]=true;Save.dirty();if(isNew){HeroEvents.emit('HERO_FUSION_DISCOVERED',{id:fid});CodexFly.push({kind:'fusion',id:fid});}
     R.fusionsRun.push(fid);if(isNew)R.newFusions++;if(!R.firstFusionTurn)R.firstFusionTurn=Math.max(1,R.turn);
     R.track.fusions++;Meta.track('fusions',1);
     this.changed();
@@ -2917,7 +2924,8 @@ const Board={
     Tut.boardUpdate(dt);
     updateBoardFx(dt);
     if(R.achQ&&R.achQ.length&&(this.achT-=dt)<=0){Notify.push(T('Achievement: {0}',T(ACH_NAME[R.achQ.shift()])),{style:'gold',pri:2,dur:2});this.achT=2;}
-    if(this.intro){this.intro.t+=dt;if(this.intro.t>=HERO_CARD_DUR)this.intro=null;}
+    if(this.intro)this.intro.t+=dt; // hero card: stays until the player taps
+    const cp=this.cardsPending();if(cp!==this.cpLast){this.cpLast=cp;UI.showBoard();}
     if(!this.cur&&!this.anims.length&&!this.intro&&this.introQ.length){this.intro=this.introQ.shift();Sound.play('mReveal');}
     if(!this.cur&&!this.anims.length&&!this.intro&&R.pendingSummons>0&&!Tut.holdSummons()){R.pendingSummons--;this.summon();this.changed();}
     if(!this.cur&&this.anims.length)this.cur=this.anims.shift();
@@ -2930,7 +2938,7 @@ const Board={
     if(!R)return;let any=!!this.cur||this.anims.length>0;
     Tut.skipIntro();
     while(R.pendingSummons>0&&!Tut.holdSummons()){R.pendingSummons--;this.summon();any=true;}
-    if(this.intro||this.introQ.length){this.intro=null;this.introQ.length=0;any=true;} // skip also drops the hero cards those summons queued
+    // hero cards those summons queued are kept: every new hero is introduced, one tap each
     let legend=false,merged=false;
     for(const c of[this.cur].concat(this.anims))if(c&&c.type==='merge'){merged=true;if(c.lv>=8)legend=true;}
     this.cur=null;this.anims.length=0;
@@ -3211,16 +3219,25 @@ function drawLesson(g){
   if(b&&b.stage==='drag'&&b.from<0)lessonPill(g,T('Put 3 matching heroes side by side!'),64,'#ffe14d',17);
   if(b&&b.stage==='celebrate'&&!Board.cur&&!Board.anims.length&&!Board.banner&&b.u){ // Stage D/E — show what improved, then return to battle
     const u=b.u,h=HEROES[u.id],q=clamp(b.cel/0.35,0,1),sc=0.6+0.4*elasticOut(q),M=CONFIG.merge;
-    g.save();g.fillStyle='rgba(6,2,18,'+0.55*q+')';g.fillRect(0,0,W,H);g.translate(W/2,370);g.scale(sc,sc);
-    g.fillStyle='rgba(16,10,44,.97)';rrect(g,-190,-120,380,250,22);g.fill();g.strokeStyle='#5ef08f';g.lineWidth=3;rrect(g,-190,-120,380,250,22);g.stroke();
-    txt(g,T('YOUR HERO IS STRONGER!'),0,-90,24,'#5ef08f');
-    drawUnit(g,u.id,u.lv-1,-95,-15,70,realT);txt(g,'→',0,-15,30,'#ffe14d');drawUnit(g,u.id,u.lv,95,-15,88,realT);
-    lvBadge(g,-95,26,u.lv-1);lvBadge(g,95,32,u.lv);
-    txt(g,h.name+' Lv'+u.lv,0,58,18,'#fff');
-    txt(g,h.lv[u.lv-1],0,82,14,'#9fe8ff');
-    txt(g,T('×{0} → ×{1} damage',M.dmgMul[u.lv-1].toFixed(2),M.dmgMul[u.lv].toFixed(2)),0,106,14,'#ffe14d');
+    g.save();g.fillStyle='rgba(6,2,18,'+0.62*q+')';g.fillRect(0,0,W,H);g.translate(W/2,350);g.scale(sc,sc);
+    g.fillStyle='rgba(16,10,44,.97)';rrect(g,-200,-160,400,400,22);g.fill();g.strokeStyle='#5ef08f';g.lineWidth=3;rrect(g,-200,-160,400,400,22);g.stroke();
+    txt(g,T('YOUR HERO IS STRONGER!'),0,-130,24,'#5ef08f');
+    drawUnit(g,u.id,u.lv-1,-95,-60,64,realT);txt(g,'→',0,-60,30,'#ffe14d');drawUnit(g,u.id,u.lv,95,-60,80,realT);
+    lvBadge(g,-95,-22,u.lv-1);lvBadge(g,95,-16,u.lv);
+    txt(g,h.name+' Lv'+u.lv,0,10,18,'#fff');
+    txt(g,h.lv[u.lv-1],0,34,14,'#9fe8ff');
+    txt(g,T('×{0} → ×{1} damage',M.dmgMul[u.lv-1].toFixed(2),M.dmgMul[u.lv].toFixed(2)),0,56,14,'#ffe14d');
+    // merge rules: what 4 and 5 heroes together do
+    g.fillStyle='rgba(255,215,106,.25)';g.fillRect(-176,78,352,2);
+    txt(g,T('MERGE MORE AT ONCE!'),0,100,17,'#ffd23f');
+    const rows=[[3,T('3 → 1 hero, +1 level'),'#5ef08f'],[4,T('4 → +1 level + Power Core (+{0}% dmg)',Math.round(M.coreDmg*100)),'#c58bff'],[5,T('5 → 2 heroes, both +1 level'),'#ffd23f']];
+    rows.forEach(([n,label,col],i)=>{const y=134+i*34;
+      g.fillStyle='rgba(255,255,255,.06)';rrect(g,-186,y-15,372,30,10);g.fill();
+      for(let k=0;k<n;k++)drawUnit(g,u.id,1,-172+k*15,y,20,realT);
+      g.font='800 13.5px system-ui,Arial,"Microsoft JhengHei","PingFang TC","Noto Sans CJK TC",sans-serif';lastFont='';g.fillStyle=col;g.textAlign='left';g.textBaseline='middle';
+      g.fillText(label,-92,y);});
     g.restore();
-    if(b.cel>0.8){g.globalAlpha=0.6+0.4*Math.sin(realT*5);txt(g,T('TAP TO CONTINUE'),W/2,520,15,'#fff');g.globalAlpha=1;}
+    if(b.cel>0.8){g.globalAlpha=0.6+0.4*Math.sin(realT*5);txt(g,T('TAP TO CONTINUE'),W/2,620,15,'#fff');g.globalAlpha=1;}
     return;
   }
   const c=Tut.ctx; // first 4/5-merge: contextual, never blocks input
@@ -3633,8 +3650,10 @@ const UI={
       for(const fid of fs){const b=document.createElement('button');b.className='btn small fuse';b.dataset.a='fuse';b.dataset.id=fid;b.textContent='⚡ '+T('FUSE: {0}',FUSIONS[fid].name);F.appendChild(b);}}
     const les=Tut.active(); // inside the merge lesson: no ads, no leaving; a skip button is the way out
     $('bdAd').style.display=!les&&CG.adsAvailable()&&R.boardAdWave!==R.wave?'':'none';
-    $('bdFight').style.display=les?'none':'';$('bdSkip').style.display=les&&Tut.bt.stage!=='intro'&&Tut.bt.kind!=='summon'?'':'none';
-    $('bdFusions').style.display=les?'none':'';
+    const cards=Board.cardsPending()||(!!Tut.bt&&Tut.bt.stage==='celebrate'); // a hero / merge card must be tapped away first
+    if(cards)$('bdAd').style.display='none';
+    $('bdFight').style.display=les||cards?'none':'';$('bdSkip').style.display=les&&Tut.bt.stage!=='intro'&&Tut.bt.kind!=='summon'?'':'none';
+    $('bdFusions').style.display=les||cards?'none':'';
   },
   showUpgrade(){
     const C=$('upCards');C.innerHTML='';
@@ -3814,6 +3833,7 @@ function render(){
   if(hurtT>0){g.fillStyle=`rgba(255,40,80,${hurtT*0.5})`;g.fillRect(0,0,W,H);}
   if(Game.state==='BOARD'||(Game.state==='FUSION'&&Fusion.ret==='BOARD')||(Game.state==='AD_PLAYING'&&Game.adReturn==='BOARD'))drawBoard(g);
   if(Game.state==='FUSION'&&Fusion.cur)drawFusion(g);
+  if(GAMEPLAY[Game.state]||Game.state==='BOARD')CodexFly.draw(g);
   g.restore();
   if(DEBUG.on)drawDebug(g);
 }
@@ -4119,6 +4139,49 @@ function drawHeroIntro(g){
   if(t>0.6){g.globalAlpha=0.6+0.4*Math.sin(realT*5);txt(g,T('TAP TO CONTINUE'),0,148,13,'#fff');g.globalAlpha=1;}
   g.restore();
 }
+/* ---------- codex registration in a run: a card flies from where it happened into the codex book (never blocks input) ----------
+   new hero seen for the first time, new evolution level reached for the first time, new fusion discovered. Queued; waits for
+   merge/summon animations, hero cards, lessons and the fusion cutscene, then plays one at a time. */
+const FLY_DUR=1.8;
+const CodexFly={
+  q:[],cur:null,log:[],
+  push(o){const c=Object.assign({t:0,st:Game.state},o);if(c.cell!==undefined&&c.cell>=0){const[x,y]=cellCenter(c.cell);c.x=x;c.y=y;}
+    if(this.q.length<12)this.q.push(c);this.log.push(o.kind+':'+o.id+(o.lv?':'+o.lv:''));if(this.log.length>40)this.log.shift();
+    if(HEROES[o.id])UI.newId=o.id;},
+  reset(){this.q.length=0;this.cur=null;},
+  waiting(){
+    const st=Game.state;if(!(GAMEPLAY[st]||st==='BOARD'))return true;
+    if(st==='BOARD'&&(Board.cur||Board.anims.length||Board.intro||Board.introQ.length||Board.legend))return true;
+    const b=Tut.bt;return !!b&&['celebrate','card','intro','portal','flying'].indexOf(b.stage)>=0;},
+  update(dt){
+    if(!this.cur){if(!this.q.length||this.waiting())return;const c=this.cur=this.q.shift();c.t=0;
+      if(c.x===undefined||c.st!==Game.state){c.x=W/2;c.y=H*0.46;} // the board closed meanwhile: start from the centre
+      Sound.play('tutOk');}
+    const c=this.cur;c.t+=dt;if(c.t>=FLY_DUR)this.cur=null;},
+  title(c){if(c.kind==='fusion')return T('NEW FUSION: {0}',FUSIONS[c.id].name);const h=HEROES[c.id];
+    return c.kind==='hero'?T('NEW DISCOVERY: {0}!',h.name):h.name+' '+lvName(c.lv);},
+  draw(g){
+    const c=this.cur;if(!c)return;const t=c.t,rm=reducedMotion(),bx=W/2,by=118;
+    const fade=t>FLY_DUR-0.3?(FLY_DUR-t)/0.3:1;g.save();g.globalAlpha=fade;
+    const pop=clamp(t/0.25,0,1),open=clamp((t-0.8)/0.2,0,1),gl=t>0.95?clamp(1-(t-0.95)/0.8,0,1):0;
+    g.save();g.translate(bx,by);const bs=0.4+0.6*elasticOut(pop);g.scale(bs,bs);drawBook(g,0,0,open,gl);g.restore();
+    const col=c.kind==='fusion'?'#ffd23f':HEROES[c.id].color;
+    // card: pops up at the source, then curves into the book while shrinking (trail behind it)
+    const fq=clamp((t-0.25)/0.7,0,1),e=fq*fq*(3-2*fq),cx2=(c.x+bx)/2+(c.x<bx?-90:90),cy2=Math.min(c.y,by)-30;
+    const path=u=>{const v=1-u;return[v*v*c.x+2*v*u*cx2+u*u*bx,v*v*c.y+2*v*u*cy2+u*u*by];};
+    const card=(u,a)=>{const[px,py]=path(u),sc=(rm?1:0.6+0.4*elasticOut(pop))*(1-0.8*u);g.save();g.globalAlpha*=a;g.translate(px,py);g.rotate(rm?0:u*0.6);g.scale(sc,sc);
+      g.fillStyle='#1d2552';rrect(g,-38,-48,76,96,12);g.fill();g.strokeStyle=col;g.lineWidth=4;rrect(g,-38,-48,76,96,12);g.stroke();
+      if(c.kind==='fusion'){const F=FUSIONS[c.id];drawUnit(g,F.a,2,-12,-10,40,realT);drawUnit(g,F.b,2,12,-2,40,realT);txt(g,'⚡',0,30,16,'#ffd23f');}
+      else{drawUnit(g,c.id,c.lv,0,-8,54,realT);lvBadge(g,0,30,c.lv);}
+      g.restore();};
+    if(t<0.95){if(!rm&&fq>0)for(let k=5;k>=1;k--){const[px,py]=path(Math.max(0,e-k*0.04));g.globalAlpha=fade*0.14*(6-k)/5;glow(g,px,py,22,col,1);}g.globalAlpha=fade;card(e,1);}
+    if(t>0.95){const q=clamp((t-0.95)/0.6,0,1);g.globalAlpha=fade*(1-q);g.strokeStyle='#ffe14d';g.lineWidth=4;g.beginPath();g.arc(bx,by,34+50*q,0,7);g.stroke();g.globalAlpha=fade;
+      const sq=clamp((t-0.95)/0.25,0,1),s2=0.6+0.4*elasticOut(sq);g.save();g.translate(bx,by+50);g.scale(s2,s2);
+      g.fillStyle='rgba(10,4,26,.88)';rrect(g,-160,-20,320,60,16);g.fill();g.strokeStyle=col;g.lineWidth=2;rrect(g,-160,-20,320,60,16);g.stroke();
+      txt(g,T('ADDED TO ENCYCLOPEDIA!'),0,0,20,'#ffe14d');txt(g,this.title(c),0,24,15,col);g.restore();}
+    g.restore();
+  }
+};
 function drawBook(g,x,y,open,gl){
   if(gl>0)glow(g,x,y,70,'#ffd76a',0.8*gl);
   const w=26+22*open;
@@ -4241,6 +4304,7 @@ function tick(dt){
   Notify.update(dt);Reveal.update(dt);UI.detailT=(UI.detailT||0)+dt;
   if(R&&Tut.gateOn())Tut.gateT+=dt;else Tut.gateT=0;
   if(Game.state==='BOARD'&&R)Board.update(dt);
+  if(R&&(GAMEPLAY[Game.state]||Game.state==='BOARD'))CodexFly.update(dt);
   if(R){
     if(R.banner&&GAMEPLAY[Game.state])R.banner.t+=dt;
     R.hintT+=dt;
@@ -4488,7 +4552,7 @@ async function boot(){
 }
 
 /* test/debug hooks (read-only use in production) */
-window.BONK={Game,CG,Save,Sound,A2HS,InApp,Meta,Upgrades,Fusion,Board,Input,CONFIG,balls,parts,texts,fx,view,Tut,Notify,Reveal,UI,Cannon,HeroEvents,MUZZLE,Mastery,Daily,drawUnit,spriteLv,UNLOCK_COST,
+window.BONK={Game,CG,Save,Sound,A2HS,InApp,CodexFly,Meta,Upgrades,Fusion,Board,Input,CONFIG,balls,parts,texts,fx,view,Tut,Notify,Reveal,UI,Cannon,HeroEvents,MUZZLE,Mastery,Daily,drawUnit,spriteLv,UNLOCK_COST,
   get R(){return R;},tick,render,
   advance(sec,fps){const dt=1/fps;let n=Math.round(sec*fps);while(n-->0)tick(dt);},
   logical:{W,H,LX,LY,GATE_Y,TOP,ROW_H,CELL,DANGER_Y}};

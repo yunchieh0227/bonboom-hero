@@ -55,7 +55,7 @@ window.onboardRun=function(maxTurns,think){
             if(w!==undefined){B.Board.move(TT.bt.from,w);T('l',think);}recovered=TT.bt&&TT.bt.stage==='drag'&&TT.bt.from>=0;}
           if(TT.bt&&TT.bt.from>=0)B.Board.move(TT.bt.from,TT.bt.to);}
         else if(TT.bt){const h=B.Board.hint;if(h)B.Board.move(h.from,h.to);else TT.skipLesson();}
-        n=0;while(G.state==='BOARD'&&TT.bt&&n++<900){B.tick(1/60);T('l',1/60);}continue;}
+        n=0;while(G.state==='BOARD'&&TT.bt&&n++<900){B.tick(1/60);T('l',1/60);if(TT.bt&&TT.bt.stage==='celebrate'&&TT.bt.cel>2.8)B.Board.down({x:224,y:400});}continue;}
       if(bt&&bt.kind==='reserve'){major('reserve');tickB('l',0.6);T('l',think);B.Board.move(TT.bt.from,TT.bt.to);if(TT.bt){T('l',think);B.Board.move(TT.bt.from,TT.bt.to);}if(TT.bt)TT.skipLesson();continue;}
       if(bt&&bt.kind==='focus'){major('focus');tickB('l',0.6);T('l',think);B.Board.down({x:184+56*1,y:642});if(TT.bt)TT.skipLesson();continue;}
       B.Board.finishAll();let n=0;while(B.Board.hint&&n++<20){B.Board.move(B.Board.hint.from,B.Board.hint.to);B.Board.finishAll();T('o',1.5);}
@@ -693,6 +693,59 @@ def main():
             c.pump()
             check("no JS errors (a2hs)", not c.errors(), c.errors(False))
 
+        # ---------------- hero cards wait for a tap, codex fly-in, merge rules (3/4/5) ----------------
+        if want("cards"):
+            cshots = os.path.join(shots, "cards"); os.makedirs(cshots, exist_ok=True)
+            c.metrics(450, 820, 2)
+            fresh(c, "nosdk=1&seed=7")
+            c.ev("skipTuts();const S=BONK.Save.d;S.settings.lang='zh';S.tutorialDone=true;S.stats.runs=3;S.seen={};S.heroLv={};S.fusions={};BONK.Save.flush()")
+            c.nav(BASE + "?nosdk=1&seed=7"); c.ev(BOT_JS)
+            c.ev("BONK.Game.startRun();toAim()")
+            vis = lambda i: c.ev(f"getComputedStyle(document.getElementById('{i}')).display") != "none"
+            # --- a new hero arrives: card with its ability, stays until tapped
+            c.ev("const R=BONK.R;R.eliteQ=1;R.eliteLv=1;R.focus='zappy';R.pendingSummons=1;BONK.Game.openBoard()")
+            c.ev("BONK.advance(0.15,60)")
+            check("FIGHT is hidden while a summon / new-hero card is pending", not vis("bdFight"))
+            c.ev("BONK.Board.down({x:20,y:780})")  # impatient tap during the summon animation: fast-forwards, must not drop the card
+            c.ev("BONK.advance(0.5,60)")
+            check("new hero card shown (tap during the summon animation no longer skips it)", c.ev("BONK.Board.intro&&BONK.Board.intro.id") == "zappy")
+            c.ev("BONK.advance(10,60);BONK.render()"); c.screenshot(os.path.join(cshots, "01_hero_card.png"))
+            check("card still on screen after 10 s (no auto-close)", c.ev("BONK.Board.intro&&BONK.Board.intro.id") == "zappy" and not vis("bdFight"))
+            check("the codex fly-in waits behind the card", c.ev("BONK.CodexFly.cur") is None and c.ev("BONK.CodexFly.q.length") >= 1)
+            c.ev("BONK.Board.down({x:224,y:400})")
+            check("one tap closes the card, FIGHT comes back", c.ev("BONK.Board.intro") is None and (c.ev("BONK.advance(0.05,60),1") and vis("bdFight")))
+            # --- codex fly-in for the newly seen hero
+            c.ev("BONK.advance(0.6,60);BONK.render()"); c.screenshot(os.path.join(cshots, "02_codex_fly.png"))
+            check("new hero flies into the codex", c.ev("BONK.CodexFly.cur&&BONK.CodexFly.cur.kind+':'+BONK.CodexFly.cur.id") == "hero:zappy")
+            c.ev("BONK.advance(0.6,60);BONK.render()"); c.screenshot(os.path.join(cshots, "03_codex_added.png"))
+            c.ev("BONK.advance(1.0,60)")
+            check("fly-in finishes by itself and never blocks the board", c.ev("BONK.CodexFly.cur") is None and c.ev("BONK.Game.state") == "BOARD")
+            # --- first-time evolution level → fly-in from the merge cell; the same level again → nothing
+            c.ev("BONK.CodexFly.log.length=0;setBoard({0:['zappy',1],1:['zappy',1],7:['zappy',1]});BONK.Board.move(7,2)")
+            c.ev("BONK.advance(3,60);BONK.render()")
+            check("first Lv2 of a hero: queued from the merge cell", "evo:zappy:2" in c.ev("BONK.CodexFly.log.join()"), c.ev("BONK.CodexFly.log.join()"))
+            c.ev("BONK.advance(3,60);BONK.CodexFly.log.length=0;setBoard({0:['zappy',1],1:['zappy',1],7:['zappy',1]});BONK.Board.move(7,2);BONK.advance(3,60)")
+            check("reaching an already-recorded level again: no fly-in", c.ev("BONK.CodexFly.log.length") == 0)
+            # --- new fusion → fly-in after the cutscene
+            c.ev("BONK.advance(3,60);setBoard({0:['bean',2],4:['zappy',2]});BONK.Game.state==='BOARD'||BONK.Game.openBoard();BONK.UI.showBoard()")
+            c.ev("BONK.Board.activateFusion('thunder')")
+            check("new fusion: fly-in waits for the cutscene", c.ev("BONK.Game.state") == "FUSION" and c.ev("BONK.CodexFly.cur") is None and c.ev("BONK.CodexFly.q.some(x=>x.kind==='fusion')"))
+            c.ev("BONK.Fusion.end();BONK.advance(0.7,60);BONK.render()"); c.screenshot(os.path.join(cshots, "04_fusion_fly.png"))
+            check("…then the fusion flies into the codex", c.ev("BONK.CodexFly.cur&&BONK.CodexFly.cur.kind") == "fusion")
+            c.ev("BONK.advance(2,60)")
+            # --- merge card: explains 3 / 4 / 5 and waits for a tap
+            c.ev("BONK.Tut.bt=BONK.Tut.newBt('merge','celebrate',{u:{id:'zappy',lv:2}});BONK.Board.reset();BONK.Board.computeHint();BONK.UI.showBoard();BONK.advance(3,60);BONK.render()")
+            c.screenshot(os.path.join(cshots, "05_merge_rules.png"))
+            check("merge card stays up (no auto-close) and hides FIGHT", c.ev("BONK.Tut.bt&&BONK.Tut.bt.stage") == "celebrate" and not vis("bdFight"))
+            src = c.ev("document.documentElement.outerHTML")
+            check("merge rules have Chinese text for 3 / 4 / 5", all(k in src for k in ("'3 → 1 hero, +1 level':'3 隻", "'4 → +1 level + Power Core (+{0}% dmg)':'4 隻", "'5 → 2 heroes, both +1 level':'5 隻")))
+            c.ev("BONK.Board.down({x:224,y:400})")
+            check("one tap closes the merge card", c.ev("BONK.Tut.bt") is None)
+            c.ev("BONK.Save.d.settings.lang='en';BONK.Save.flush()")
+            c.pump()
+            check("no JS errors (cards)", not c.errors(), c.errors(False))
+            c.metrics(450, 820, 1)
+
         # ---------------- opened inside LINE / Instagram / Facebook: switch to the real browser ----------------
         if want("inapp"):
             LINE_IOS = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Safari Line/14.20.0"
@@ -1240,8 +1293,11 @@ def main():
             ev("BONK.advance(1.2,60);BONK.render()"); c.screenshot(os.path.join(tshots, "t02c_summon_card.png"))
             sm = json.loads(ev("JSON.stringify({st:BONK.Tut.bt&&BONK.Tut.bt.stage,u:BONK.Tut.bt&&BONK.Tut.bt.u,starter:BONK.R.starter,n:BONK.R.board.filter(Boolean).length,s:BONK.R.summons})"))
             check("the player's tap summons a real, new hero and shows its card", sm["st"] == "card" and sm["u"] and sm["u"]["id"] != sm["starter"] and sm["n"] == 3 and sm["s"] == 1, sm)
+            ev("BONK.advance(6,60)")
+            check("the new hero card stays on screen until the player taps", ev("BONK.Game.state") == "BOARD" and ev("BONK.Tut.bt&&BONK.Tut.bt.stage") == "card")
+            ev("BONK.Board.down({x:224,y:330})")
             st = until(("AIMING",), 40)
-            check("summon lesson returns to combat by itself; new hero fires; board/passives not shown yet",
+            check("one tap on the card returns to combat; new hero fires; board/passives not shown yet",
                   st == "AIMING" and ev("BONK.R.seq.some(p=>p.id==='" + sm["u"]["id"] + "')") and ev("getComputedStyle(document.getElementById('hudBoard')).display") == "none" and ev("BONK.Tut.done('summon')"))
             # --- merge board unlock lesson (2 more turns, next earned summon)
             shoot_low(); st = until(("AIMING", "BOARD"))
@@ -1267,8 +1323,11 @@ def main():
             check("the player's own drag performs the merge → celebration", ev("BONK.R.merges") == 1 and ev("BONK.Tut.bt.stage") == "celebrate" and ev("BONK.Tut.done('merge')"))
             ev("BONK.advance(1.0,60);BONK.render()"); c.screenshot(os.path.join(tshots, "t06_evolved.png"))
             ev("BONK.advance(1.6,60);BONK.render()"); c.screenshot(os.path.join(tshots, "t07_stronger.png"))
+            ev("BONK.advance(5,60)")
+            check("merge card explains 3 / 4 / 5 merges and stays until tapped", ev("BONK.Game.state") == "BOARD" and ev("BONK.Tut.bt&&BONK.Tut.bt.stage") == "celebrate")
+            ev("BONK.Board.down({x:224,y:400})")
             st = until(("AIMING",), 60)
-            check("celebration returns to battle by itself (gameplay resumed)", st == "AIMING" and ev("BONK.CG.playing") is True)
+            check("one tap returns to battle (gameplay resumed)", st == "AIMING" and ev("BONK.CG.playing") is True)
             check("evolved Lv2 hero is in the combat loadout; nothing duplicated (3 Lv1 → 1 Lv2)",
                   ev("BONK.R.seq.some(p=>p.lv===2)") and ev("BONK.R.board.filter(u=>u&&u.lv===2).length") == 1 and ev("BONK.R.merges") == 1
                   and ev("BONK.R.board.concat(BONK.R.reserve).filter(Boolean).length") == 2 + ev("BONK.R.summons") - 2, ev("boardSig()"))
@@ -1419,12 +1478,12 @@ def main():
               Bd.down({x:224,y:400});o.afterTap=!!Bd.intro;for(let i=0;i<60;i++)B.tick(1/60);
               o.dupIntro=!!Bd.intro||Bd.introQ.length>0;o.dupEvents=B.HeroEvents.count('HERO_DUPLICATE_SUMMON');o.firstEvents=B.HeroEvents.count('HERO_FIRST_RUN_SUMMON');
               R.pool=[y];R.pendingSummons=2;R.pool=[y,y];for(let i=0;i<40;i++)B.tick(1/60);o.intro2=Bd.intro&&Bd.intro.id;o.q2=Bd.introQ.length;
-              const units=R.board.concat(R.reserve).filter(Boolean).length;Bd.finishAll();o.skipKeeps=R.board.concat(R.reserve).filter(Boolean).length>=units&&!Bd.intro&&!Bd.busy();
+              const units=R.board.concat(R.reserve).filter(Boolean).length;Bd.finishAll();o.skipKeeps=R.board.concat(R.reserve).filter(Boolean).length>=units&&!!Bd.intro&&Bd.intro.id===y;
               o.seenAfter=!!B.Save.d.seen[x];return JSON.stringify(o);})()"""))
             check("first summon of a hero type in a run: short NEW HERO JOINED card (marked as new discovery)", r["intro"] == r["x"] and r["busy"] and r["first"] is (not r["seenBefore"]), r)
             check("card pauses further summons, one tap continues", r["heldDuringCard"] == 1 and not r["afterTap"], r)
             check("duplicate summon: no card, compact +1 HERO only", not r["dupIntro"] and r["dupEvents"] >= 1 and r["firstEvents"] == 1, r)
-            check("cards never overlap; skipping keeps every hero and clears the queue", r["intro2"] == r["y"] and r["q2"] == 0 and r["skipKeeps"], r)
+            check("cards never overlap; skipping keeps every hero and still shows the new-hero card", r["intro2"] == r["y"] and r["q2"] == 0 and r["skipKeeps"], r)
             ev(r"""(()=>{const B=BONK,Bd=B.Board,R=B.R;R.pool=[R.pool[0]];})()""")
             ev("BONK.Game.closeBoard();BONK.Game.state==='UPGRADE'&&BONK.Game.pick(0)")
             rs = json.loads(ev(f"(()=>{{BONK.Game.newRun();const R=BONK.R;return JSON.stringify({{rs:Object.keys(R.runSeen),seen:!!BONK.Save.d.seen['{r['x']}']}})}})()"))

@@ -218,10 +218,15 @@ Two separate tracks:
   - **Other in-app browsers:** a screen asks the player to switch, because sound, saved progress and Add to Home Screen may not work there. It shows how to find the app's "Open in browser" menu (⋯ / ⋮), plus COPY LINK and PLAY HERE ANYWAY. On Android, OPEN IN BROWSER hands the URL to Chrome (`intent://`, falls back to the web URL). iPhone apps have no way for a page to open Safari, so only the hint and COPY LINK are offered there.
   - **Not shown:** in normal browsers, in iframes (CrazyGames), or from the Home Screen app. After PLAY HERE ANYWAY it stays closed for the rest of that session.
 
+- **In-run discovery:**
+  - **New hero cards:** the first time a hero type joins in a run, a card shows its ability with a live demo. It stays until the player taps; FIGHT, fusions and the ad button are hidden meanwhile, and fast-forwarding summons no longer skips the card.
+  - **Codex fly-in:** a new hero seen for the first time, an evolution level reached for the first time, and a newly discovered fusion each fly as a card from where it happened into a codex book, with "ADDED TO ENCYCLOPEDIA!". It is queued behind animations, cards, lessons and the fusion cutscene, and never blocks input.
+  - **Merge rules:** the first-merge card also explains merging 3 (one hero, +1 level), 4 (+ Power Core) and 5 (two heroes, both +1 level). It stays until tapped. Settings → Tutorials → REPLAY shows it again.
+
 ## Run the tests
 
 ```
-python tests/run_tests.py <output_dir> [functional touch physics caps content balance restart persist save a2hs inapp audio sdk realsdk merge tutorial onboard phase5 evolution i18n shots]
+python tests/run_tests.py <output_dir> [functional touch physics caps content balance restart persist save a2hs cards inapp audio sdk realsdk merge tutorial onboard phase5 evolution i18n shots]
 ```
 Needs Chrome at the default install path and `pip install websocket-client`. Screenshots are written to `<output_dir>/shots`.
 
