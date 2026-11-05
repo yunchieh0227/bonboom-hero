@@ -254,12 +254,17 @@ def main():
         if want("touch"):
             c.metrics(390, 844, 3, True)
             fresh(c)
+            # audio: a brand-new player starts in combat without tapping any button; the first touch must unlock audio
+            # from an event iOS accepts (touchend / pointerup), not only from pointerdown
+            c.ev("window.__ul=[];const _u=BONK.Sound.unlock;BONK.Sound.unlock=function(){__ul.push(window.event&&window.event.type);return _u.apply(this,arguments);}")
             x0, y0 = clientxy(c, 224, 500)
             x1, y1 = clientxy(c, 120, 300)
             c.touch("touchStart", x0, y0)
             c.touch("touchMove", x1, y1)
             check("touch drag updates aim", c.ev("BONK.Input.active && BONK.Input.valid"))
             c.touch("touchEnd", x1, y1)
+            ul = c.ev("JSON.stringify(__ul)")
+            check("first touch unlocks audio from touchend/pointerup (iOS-accepted gesture) and audio runs", ("touchend" in ul or "pointerup" in ul) and c.ev("BONK.Sound.ctx&&BONK.Sound.ctx.state") == "running" and c.ev("BONK.Save.d.settings.mute") is False, ul)
             check("touch release fires", c.ev("BONK.Game.state") == "FIRING")
             finish_turn(c)
             # interrupted touch: pointercancel must not fire
@@ -357,6 +362,12 @@ def main():
                let worst=0,sum=0,n=0,maxB=0;for(let i=0;i<600&&G.state==='FIRING';i++){const t=performance.now();B.tick(1/60);B.render();const d=performance.now()-t;worst=Math.max(worst,d);sum+=d;n++;maxB=Math.max(maxB,B.balls.list.length);}
                return{avg:+(sum/n).toFixed(2),worst:+worst.toFixed(2),frames:n,maxBalls:maxB};})()""")
             check("heavy scene avg frame (sim+render) < 8ms on this machine", perf["avg"] < 8 and perf["maxBalls"] >= 100 and perf["frames"] >= 120, perf)
+            # gate edges: a ball whose edge clips the gate counts; one that clearly misses does not
+            edge = c.ev(r"""(()=>{const B=BONK,G=B.Game,L=B.logical;function shot(dx){toAim();const R=B.R;R.enemies.length=0;R.grid.fill(null);const e=G.makeEnemy('gloom',6,0,1,999999);G.placeEnemy(e);
+                 R.gates.length=0;R.gates.push({k:'mult',v:2,x:150,w:84,flash:0});R.track.gateBalls=0;
+                 G.fire(Math.atan2(L.GATE_Y-L.LY,150+dx-L.LX));for(let i=0;i<3000&&G.state==='FIRING';i++)B.tick(1/120);return R.track.gateBalls;}
+               return {inside:shot(42),edgeL:shot(-10),edgeR:shot(84+10),miss:shot(-24)};})()""")
+            check("gate edges are forgiving: ball edge touching the gate multiplies, a clear miss does not", edge["inside"] > 0 and edge["edgeL"] > 0 and edge["edgeR"] > 0 and edge["miss"] == 0, edge)
             c.pump()
             check("no JS errors (caps)", not c.errors(), c.errors(False))
 

@@ -729,11 +729,16 @@ const Save={
 /* ============================================================
    Procedural audio (WebAudio)
    ============================================================ */
+const IS_IOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const Sound={
   ctx:null,master:null,sfx:null,music:null,noiseBuf:null,last:{},voices:0,hidden:false,
   musicStep:0,musicNext:0,musicTimer:0,
+  // must run inside a real user gesture (touchend / pointerup / click / keydown); a touch pointerdown does not count on iOS
   unlock(){
-    if(this.ctx){if(this.ctx.state==='suspended')this.ctx.resume().catch(()=>{});return;}
+    // iPhone: play through the ring/silent switch like a game, not as muted "ambient" sound
+    try{if(navigator.audioSession&&navigator.audioSession.type!=='playback')navigator.audioSession.type='playback';}catch(e){}
+    if(!navigator.audioSession&&IS_IOS)this.htmlKick();
+    if(this.ctx){if(this.ctx.state!=='running')this.ctx.resume().catch(()=>{});this.kick();return;}
     const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
     try{
       const c=this.ctx=new AC();
@@ -745,10 +750,22 @@ const Sound={
       for(let i=0;i<n;i++)ch[i]=Math.random()*2-1;
       this.apply();
       this.musicTimer=setInterval(()=>this.schedMusic(),60);
+      if(c.state!=='running')c.resume().catch(()=>{});this.kick();
     }catch(e){console.warn('audio init failed',e);this.ctx=null;}
+  },
+  // a 1-sample silent buffer started inside the gesture: the classic WebKit audio unlock
+  kick(){try{const c=this.ctx,s=c.createBufferSource();s.buffer=c.createBuffer(1,1,22050);s.connect(c.destination);s.start(0);}catch(e){}},
+  // older iOS without navigator.audioSession: a playing (silent) media element switches the page to the playback category
+  htmlKick(){
+    try{if(!this.silentEl){const n=800,b=new Uint8Array(44+n),v=new DataView(b.buffer),w=(o,t)=>{for(let i=0;i<t.length;i++)b[o+i]=t.charCodeAt(i);};
+        w(0,'RIFF');v.setUint32(4,36+n,true);w(8,'WAVEfmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,8000,true);v.setUint32(28,8000,true);
+        v.setUint16(32,1,true);v.setUint16(34,8,true);w(36,'data');v.setUint32(40,n,true);b.fill(128,44);
+        const a=this.silentEl=new Audio(URL.createObjectURL(new Blob([b],{type:'audio/wav'})));a.loop=true;a.setAttribute('playsinline','');a.volume=0.01;}
+      if(this.silentEl.paused&&!this.hidden)this.silentEl.play().catch(()=>{});}catch(e){}
   },
   muted(){return Save.d.settings.mute||CG.sdkMute||Game.state==='AD_PLAYING'||this.hidden;},
   apply(){
+    if(this.silentEl&&this.hidden&&!this.silentEl.paused)this.silentEl.pause();
     if(!this.ctx)return;const t=this.ctx.currentTime;
     this.master.gain.setTargetAtTime(this.muted()?0:0.85,t,0.03);
     const mOn=Save.d.settings.music&&Game.isGameplay();
@@ -1895,13 +1912,15 @@ function lifesteal(p,amt,e){
     for(let i=0;i<6;i++){const q=parts.get();if(!q)break;Object.assign(q,{x:e.rx+e.rw/2,y:e.ry+e.rh/2,vx:(Math.random()-0.5)*80,vy:-60,life:0,max:0.9,size:3,color:'#ff2d55',type:2,tx:370,ty:44,g:0});}
   }else R.lsPool=Math.min(R.lsPool,p.lsPer);
 }
+// a ball counts as soon as its edge touches the gate (plus a little forgiveness); the nearest gate wins
+const GATE_PAD=6;
+function gateAt(x,r){let g=null,best=1e9;for(const q of R.gates){const d=x<q.x?q.x-x:x>q.x+q.w?x-q.x-q.w:0;if(d<=r+GATE_PAD&&d<best){best=d;g=q;}}return g;}
 function hitGate(b){
-  const x=b.x;let g=null;
-  for(const q of R.gates)if(x>=q.x&&x<=q.x+q.w){g=q;break;}
+  const g=gateAt(b.x,b.r);
   if(!g)return;
+  if(g.k==='mult'&&b.clone)return; // copies never multiply again, so they do not flash either
   g.flash=0.25;Sound.play('gate');
   if(g.k==='mult'){
-    if(b.clone)return;
     const k=gateValue(g);R.track.gateBalls++;Meta.track('gateBalls',1);Tut.onGatePass(g);
     const base=Math.atan2(b.vy,b.vx),sp=Math.sqrt(b.vx*b.vx+b.vy*b.vy);
     let lost=0;
@@ -3810,7 +3829,7 @@ function drawAim(g){
   const r=CONFIG.ball.r;aimN=0;aimPts[aimN++]=x;aimPts[aimN++]=y;let bounces=0;previewGate=null;let dist=0;
   for(let i=0;i<500&&bounces<2&&dist<1100;i++){
     const py=y;x+=vx*4;y+=vy*4;dist+=4;
-    if(py>=GATE_Y&&y<GATE_Y&&!previewGate){for(const q of R.gates)if(x>=q.x&&x<=q.x+q.w){previewGate=q;break;}}
+    if(py>=GATE_Y&&y<GATE_Y&&!previewGate)previewGate=gateAt(x,r);
     let hit=false;
     if(x<r){x=r;vx=-vx;hit=true;}else if(x>W-r){x=W-r;vx=-vx;hit=true;}
     if(y<WALL_TOP+r){y=WALL_TOP+r;vy=-vy;hit=true;}
@@ -4180,6 +4199,8 @@ async function boot(){
   setupInput(cv);
   $('ui').addEventListener('click',e=>UI.onClick(e));
   $('ui').addEventListener('pointerdown',()=>Sound.unlock());
+  // gestures that browsers accept for starting audio (touch pointerdown is not one of them on iOS)
+  for(const ev of ['pointerup','touchend','click','keydown'])document.addEventListener(ev,()=>Sound.unlock(),{capture:true,passive:true});
   $('rvCv').addEventListener('pointerdown',()=>Reveal.tap());
   await CG.init();
   CG.loadingStart();
@@ -4194,7 +4215,7 @@ async function boot(){
 }
 
 /* test/debug hooks (read-only use in production) */
-window.BONK={Game,CG,Save,Meta,Upgrades,Fusion,Board,Input,CONFIG,balls,parts,texts,fx,view,Tut,Notify,Reveal,UI,Cannon,HeroEvents,MUZZLE,Mastery,Daily,drawUnit,spriteLv,UNLOCK_COST,
+window.BONK={Game,CG,Save,Sound,Meta,Upgrades,Fusion,Board,Input,CONFIG,balls,parts,texts,fx,view,Tut,Notify,Reveal,UI,Cannon,HeroEvents,MUZZLE,Mastery,Daily,drawUnit,spriteLv,UNLOCK_COST,
   get R(){return R;},tick,render,
   advance(sec,fps){const dt=1/fps;let n=Math.round(sec*fps);while(n-->0)tick(dt);},
   logical:{W,H,LX,LY,GATE_Y,TOP,ROW_H,CELL,DANGER_Y}};
