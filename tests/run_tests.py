@@ -227,6 +227,13 @@ def main():
             check("pause button pauses (no shot)", c.ev("BONK.Game.state") == "PAUSED")
             c.ev("document.querySelector('[data-a=resume]').click()")
             check("resume returns to AIMING", c.ev("BONK.Game.state") == "AIMING")
+            # HUD sound button: sound on by default, a real tap toggles mute and never fires
+            check("sound is on by default", c.ev("BONK.Save.d.settings.mute") is False)
+            sx, sy = c.ev("(()=>{const r=document.getElementById('hudSound').getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]})()")
+            for t in ("mousePressed", "mouseReleased"): c.mouse(t, sx, sy)
+            check("HUD sound button mutes without firing", c.ev("[BONK.Save.d.settings.mute,BONK.Game.state,document.getElementById('hudSound').classList.contains('off')]") == [True, "AIMING", True])
+            for t in ("mousePressed", "mouseReleased"): c.mouse(t, sx, sy)
+            check("HUD sound button unmutes", c.ev("BONK.Save.d.settings.mute") is False)
             # player damage + death
             c.ev("""(()=>{const R=BONK.R;R.hp=1;for(const e of R.enemies){if(!e.dead){BONK.Game.gridSet(e,null);e.row=9;e.col=e.col;BONK.Game.setRect(e);BONK.Game.gridSet(e,e);}}})()""")
             # stack collisions: put just one enemy at row 9
@@ -525,6 +532,77 @@ def main():
             check("corrupt save does not crash", c.ev("BONK.Game.state") in ("MENU", "AIMING"))
             c.pump()
             check("no JS errors (persist)", not c.errors(), c.errors(False))
+
+        # ---------------- Home Screen persistence / save reliability ----------------
+        if want("save"):
+            K = "bonkageddon_save"
+            def stored():
+                return json.loads(c.ev(f"localStorage.getItem('{K}')") or "null")
+            fresh(c, "nosdk=1&seed=43")
+            check("Home Screen metadata: app title, capable, touch icon, manifest",
+                  c.ev("""(()=>{const m=n=>{const e=document.querySelector('meta[name="'+n+'"]');return e&&e.content};
+                    return m('apple-mobile-web-app-title')==='蹦蹦英雄'&&m('apple-mobile-web-app-capable')==='yes'&&!!document.querySelector('link[rel=apple-touch-icon]')
+                      &&!!document.querySelector('link[rel=manifest]')&&document.title.indexOf('蹦蹦英雄')>=0})()"""))
+            import urllib.request
+            def get(u):
+                with urllib.request.urlopen("http://127.0.0.1:8765/" + u) as f: return f.read()
+            man = json.loads(get("manifest.webmanifest").decode("utf-8"))
+            check("touch icon + manifest served (standalone, short name 蹦蹦英雄)", len(get("apple-touch-icon.png")) > 1000 and len(get("icon-512.png")) > 1000 and man["display"] == "standalone" and man["short_name"] == "蹦蹦英雄")
+            # 1–3: earn coins → purchase → written immediately (same task, no timer)
+            c.ev("BONK.Game.pause();BONK.Game.quit();BONK.Save.d.coins=2000;BONK.Save.flush()")
+            c.ev("document.querySelector('[data-a=shop]').click();document.querySelector('#shopList [data-a=unlock][data-id=frosty]').click()")
+            s1 = c.ev(f"(()=>{{document.querySelector('#shopList [data-a=buy][data-id=dmg]').click();const s=JSON.parse(localStorage.getItem('{K}'));return [s.coins,s.unlocked.frosty,s.perm.dmg,BONK.Save.d.coins]}})()")
+            check("purchase + upgrade are in storage immediately after the tap", s1[0] == s1[3] and s1[1] is True and s1[2] == 1, s1)
+            # permanent changes through dirty(): written right after the current task
+            c.ev("BONK.Save.d.ach.lv3=true;BONK.Save.d.fusions.thunder=true;BONK.Save.dirty()")
+            st = stored()
+            check("achievement / codex discovery saved without waiting for a timer or pagehide", st["ach"]["lv3"] is True and st["fusions"]["thunder"] is True)
+            check("rolling backup copy is written too", json.loads(c.ev(f"localStorage.getItem('{K}_bak')"))["coins"] == st["coins"])
+            # 4–8: close the app (no pagehide!) and reopen → everything preserved
+            c.send("Page.navigate", url="about:blank"); time.sleep(0.4)
+            c.nav(BASE + "?nosdk=1")
+            got = c.ev("(()=>{const S=BONK.Save.d;return [S.coins,S.unlocked.frosty,S.perm.dmg,S.ach.lv3,S.fusions.thunder,BONK.Game.state]})()")
+            check("reopen: coins, hero, upgrade, achievement, codex preserved", got[:5] == [s1[3], True, 1, True, True] and got[5] == "MENU", got)
+            c.nav(BASE + "?nosdk=1")
+            check("reload again: still preserved", c.ev("BONK.Save.d.coins") == s1[3] and c.ev("BONK.Save.d.unlocked.frosty") is True)
+            # early pagehide/visibility before the save is loaded must not write defaults over it
+            c.send("Network.setBlockedURLs", urls=["*sdk.crazygames.com*"]); c.send("Network.enable")
+            sid = c.send("Page.addScriptToEvaluateOnNewDocument", source="window.CrazyGames={SDK:{environment:'disabled',init:()=>new Promise(r=>setTimeout(r,1500))}};")["identifier"]
+            c.nav(BASE)
+            c.ev("window.dispatchEvent(new Event('pagehide'));document.dispatchEvent(new Event('visibilitychange'))")
+            mid = stored()
+            time.sleep(2.0)
+            check("pagehide during slow SDK init does not overwrite the save", mid["coins"] == s1[3] and mid["unlocked"]["frosty"] is True and c.ev("BONK.Save.d.coins") == s1[3], mid["coins"])
+            c.send("Page.removeScriptToEvaluateOnNewDocument", identifier=sid); c.send("Network.setBlockedURLs", urls=[])
+            # update with a newer save format (old cached page): unknown fields and the newer version survive a write
+            c.nav("http://127.0.0.1:8765/tests/", wait_expr="document.readyState==='complete'")
+            c.ev(f"(()=>{{const s=JSON.parse(localStorage.getItem('{K}'));s.v=99;s.futureThing={{a:1}};s.ach.futureAch=true;localStorage.setItem('{K}',JSON.stringify(s));}})()")
+            c.nav(BASE + "?nosdk=1")
+            c.ev("BONK.Save.d.coins+=5;BONK.Save.flush()")
+            st = stored()
+            check("newer save format: version, unknown fields and progress kept", st["v"] == 99 and st.get("futureThing") == {"a": 1} and st["ach"].get("futureAch") is True and st["coins"] == s1[3] + 5, [st["v"], st.get("futureThing")])
+            # corrupt main save → restored from the backup; the corrupt copy is kept
+            c.nav("http://127.0.0.1:8765/tests/", wait_expr="document.readyState==='complete'")
+            c.ev(f"localStorage.setItem('{K}','{{broken')")
+            c.nav(BASE + "?nosdk=1")
+            check("corrupt save: progress restored from backup, corrupt copy kept",
+                  c.ev("BONK.Save.d.coins") == s1[3] + 5 and c.ev("BONK.Save.d.unlocked.frosty") is True and c.ev(f"localStorage.getItem('{K}_corrupt')") == "{broken" and stored()["coins"] == s1[3] + 5)
+            # storage that throws on read: never overwrite what could not be read
+            r = c.ev(f"""(()=>{{const B=BONK.Save,o=Storage.prototype.getItem,before=localStorage.getItem('{K}');
+                Storage.prototype.getItem=function(k){{if(k.indexOf('bonkageddon')===0)throw new Error('denied');return o.call(this,k);}};
+                B.load();const blocked=B.blocked,coins=B.d.coins;B.d.coins=1;const w1=B.flush();
+                Storage.prototype.getItem=o;const w2=B.flush();
+                return {{blocked,coins,w1,w2,same:localStorage.getItem('{K}')===before}};}})()""")
+            check("unreadable storage: defaults are never written over the real save", r["blocked"] and r["w1"] is False and r["w2"] is False and r["same"], r)
+            # writes that throw (quota / private mode) do not crash the game
+            c.nav(BASE + "?nosdk=1")
+            r = c.ev("""(()=>{const o=Storage.prototype.setItem;Storage.prototype.setItem=function(){throw new Error('quota')};
+                let ok;try{ok=BONK.Save.flush();}catch(e){ok='threw'}Storage.prototype.setItem=o;return [ok,!!BONK.Save.lastError];})()""")
+            check("write failure is caught and reported (no crash)", r == [False, True], r)
+            c.nav(BASE + "?nosdk=1")
+            check("after all failures the real progress is still there", c.ev("BONK.Save.d.coins") == s1[3] + 5 and c.ev("BONK.Save.d.unlocked.frosty") is True)
+            c.pump()
+            check("no JS errors (save)", not c.errors(), c.errors(False))
 
         # ---------------- SDK adapter ----------------
         if want("sdk"):

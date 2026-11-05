@@ -4,7 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#1a0b33">
-<title>BONKAGEDDON</title>
+<title>BONBOOM HERO! 蹦蹦英雄：彈珠超進化</title>
+<meta name="description" content="BONBOOM HERO! 蹦蹦英雄：彈珠超進化 — 彈越多，爆越大！">
+<meta name="application-name" content="蹦蹦英雄">
+<meta name="apple-mobile-web-app-title" content="蹦蹦英雄">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<link rel="manifest" href="manifest.webmanifest">
 <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -73,6 +82,9 @@ h2{font-weight:900;font-size:34px;color:#ffe14d;text-shadow:0 4px 0 #b0285a,0 6p
   background:rgba(255,255,255,.14);box-shadow:0 4px 0 rgba(0,0,0,.35);cursor:pointer}
 #hudPause:before,#hudPause:after{content:"";position:absolute;top:14px;width:6px;height:20px;background:#fff;border-radius:3px}
 #hudPause:before{left:16px}#hudPause:after{right:16px}
+#hudSound{position:absolute;left:64px;top:8px;width:48px;height:48px;border-radius:14px;border:0;pointer-events:auto;display:none;padding:0;
+  background:rgba(255,255,255,.14);box-shadow:0 4px 0 rgba(0,0,0,.35);cursor:pointer;color:#fff}
+#hudSound svg{width:28px;height:28px;display:block;margin:auto}#hudSound .x{display:none}#hudSound.off .w{display:none}#hudSound.off .x{display:inline}#hudSound.off{color:#ff8a9e}
 #hudRecall{position:absolute;right:8px;bottom:42px;pointer-events:auto;display:none;font-size:15px;min-width:0;padding:10px 12px;min-height:44px}
 #toast{position:absolute;left:50%;top:110px;transform:translateX(-50%);background:rgba(0,0,0,.75);padding:10px 16px;border-radius:12px;
   font-weight:800;font-size:15px;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
@@ -194,6 +206,7 @@ body.rm .btn.glow,body.rm .goal.ready,body.rm .cx canvas,body.rm .cx.un:before,b
 <canvas id="c"></canvas>
 <div id="ui">
   <button id="hudPause" aria-label="Pause" data-a="pause"></button>
+  <button id="hudSound" aria-label="Sound" data-a="hudSnd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="w" d="M16.5 8.5a5 5 0 0 1 0 7M19.5 5.5a9 9 0 0 1 0 13"/><path class="x" d="M16 9l6 6M22 9l-6 6"/></svg></button>
   <button id="hudRecall" class="btn gray small" data-a="recall">RECALL &#9660;</button>
   <button id="hudBoard" class="btn blue small" data-a="board">HEROES</button>
   <div id="toast"></div>
@@ -643,24 +656,43 @@ function mergeSafe(def,src){
   }
   return def;
 }
+const SAVE_BAK=SAVE_KEY+'_bak',SAVE_BAD=SAVE_KEY+'_corrupt';
+// keeps keys this build does not know (written by a newer build) so an old cached page never strips them
+function overlayKeep(base,cur,shape){
+  if(!base||typeof base!=='object'||Array.isArray(base))return cur;
+  const out=Object.assign({},base);
+  for(const k in cur){const sh=shape&&shape[k],c=cur[k];
+    out[k]=(sh&&typeof sh==='object'&&!Array.isArray(sh)&&Object.keys(sh).length&&c&&typeof c==='object'&&!Array.isArray(c))?overlayKeep(base[k],c,sh):c;}
+  return out;
+}
 const Save={
-  d:defaultSave(),store:'memory',timer:0,lastError:null,
+  d:defaultSave(),store:'memory',lastError:null,
+  ready:false,      // nothing is written before load() finished: an early pagehide can never overwrite a real save with defaults
+  blocked:false,    // storage could not be read: never overwrite what we could not see
+  pend:false,base:null,future:0,
   backend(){
     const ds=CG.dataStore();if(ds)return{kind:'crazygames',get:k=>ds.getItem(k),set:(k,v)=>ds.setItem(k,v)};
     try{const t='__bonk_t';localStorage.setItem(t,'1');localStorage.removeItem(t);
       return{kind:'local',get:k=>localStorage.getItem(k),set:(k,v)=>localStorage.setItem(k,v)};}catch(e){}
     return{kind:'memory',get:()=>null,set:()=>{}};
   },
+  parse(raw){if(!raw)return null;try{const o=JSON.parse(raw);return o&&typeof o==='object'&&!Array.isArray(o)?o:null;}catch(e){return null;}},
   load(){
-    let raw=null;const be=this.backend();this.store=be.kind;
-    try{raw=be.get(SAVE_KEY);}catch(e){console.warn('[Save] read failed',e);
-      if(be.kind==='crazygames'){try{raw=localStorage.getItem(SAVE_KEY);this.store='local';}catch(_){}}}
-    let obj=null;
-    if(raw){try{obj=JSON.parse(raw);}catch(e){console.warn('[Save] corrupt save ignored');}}
+    let be=this.backend(),raw=null,readErr=false;this.store=be.kind;
+    try{raw=be.get(SAVE_KEY);}catch(e){readErr=true;console.warn('[Save] read failed',e);}
+    if(readErr&&be.kind==='crazygames'){try{raw=localStorage.getItem(SAVE_KEY);readErr=false;this.store='local';
+      be={kind:'local',get:k=>localStorage.getItem(k),set:(k,v)=>localStorage.setItem(k,v)};}catch(_){}}
+    let obj=this.parse(raw);
+    if(raw&&!obj){ // corrupt main save: keep a copy of it, fall back to the last good backup
+      console.warn('[Save] corrupt save, trying backup');try{be.set(SAVE_BAD,raw);}catch(_){}
+      try{obj=this.parse(be.get(SAVE_BAK));}catch(_){}}
+    if(!raw&&!readErr){try{obj=this.parse(be.get(SAVE_BAK));}catch(_){}} // main key missing but a backup exists
+    this.blocked=readErr&&!obj;
     const d=defaultSave();
     if(obj){
-      if(typeof obj.v!=='number')obj.v=1;if(obj.v>SAVE_VERSION)obj.v=SAVE_VERSION;
-      mergeSafe(d,obj);
+      if(typeof obj.v!=='number')obj.v=1;
+      this.future=obj.v>SAVE_VERSION?obj.v:0;const src=Object.assign({},obj,{v:Math.min(obj.v,SAVE_VERSION)});
+      mergeSafe(d,src);
       if(d.v<2){for(const id in d.seen)if(d.seen[id]&&HEROES[id]&&!d.heroLv[id])d.heroLv[id]=1;d.v=2;} // v1 → v2: hero levels discovered
       if(d.v<3){ // v2 → v3: tutorial progress. Returning players skip lessons for things they have already done.
         const t=d.tut;if(d.tutorialDone||d.stats.runs>0){t.aim=1;t.gate=1;}
@@ -672,16 +704,25 @@ const Save={
       d.legend=d.legend.filter(id=>HEROES[id]).slice(0,CONFIG.mastery.legendSlots);
       for(const h of STARTER_UNLOCKED)d.unlocked[h]=true;
       d.coins=Math.max(0,Math.floor(d.coins));
+      this.base=obj;
     }
-    this.d=d;
+    this.d=d;this.ready=true;
+    if(obj)this.flush(); // store the migrated save (and restore the main key from a backup)
+    try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist().catch(()=>{});}catch(_){} // ask the browser not to evict it
   },
-  dirty(){clearTimeout(this.timer);this.timer=setTimeout(()=>this.flush(),400);},
+  // every permanent change calls dirty(): written right after the current task, several changes in one step = one write
+  dirty(){if(this.pend)return;this.pend=true;queueMicrotask(()=>{if(this.pend)this.flush();});},
   flush(){
-    clearTimeout(this.timer);
-    const json=JSON.stringify(this.d);const be=this.backend();
-    try{be.set(SAVE_KEY,json);this.lastError=null;}
+    this.pend=false;if(!this.ready)return false;
+    const be=this.backend();
+    if(this.blocked){let r=null;try{r=be.get(SAVE_KEY);}catch(e){return false;}if(r)return false;this.blocked=false;} // still unreadable / unseen data: keep it
+    const out=overlayKeep(this.base,this.d,defaultSave());if(this.future)out.v=this.future;out.savedAt=Date.now();
+    const json=JSON.stringify(out);
+    try{be.set(SAVE_KEY,json);if(be.get(SAVE_KEY)!==json)throw new Error('verify failed');this.lastError=null;}
     catch(e){this.lastError=e;console.warn('[Save] write failed',e);
-      try{localStorage.setItem(SAVE_KEY,json);}catch(_){}}
+      try{localStorage.setItem(SAVE_KEY,json);}catch(_){}return false;}
+    try{be.set(SAVE_BAK,json);}catch(_){}
+    return true;
   }
 };
 
@@ -3281,14 +3322,14 @@ const UI={
     if(map[s])this.show(map[s]);else this.show(null);
     if(s==='MENU'){Notify.clear();this.refreshMenu();}
     const inRun=GAMEPLAY[s];
-    $('hudPause').style.display=inRun?'block':'none';
+    $('hudPause').style.display=inRun?'block':'none';$('hudSound').style.display=inRun?'block':'none';this.syncSound();
     if(s!=='FIRING')$('hudRecall').style.display='none';
     $('hudBoard').style.display=s==='AIMING'&&R&&Tut.done('merge')?'block':'none'; // revealed by the board unlock lesson
     if(s==='AIMING')$('hudBoard').classList.toggle('ready',!!(Board.hint||Board.fusionsAvailable().length));
     if(s==='BOARD')this.showBoard();
     document.body.classList.toggle('boardOpen',s==='BOARD'||s==='FUSION');
-    if(s==='PAUSED')$('pSound').textContent=T('SOUND: {0}',T(Save.d.settings.mute?'OFF':'ON'));
   },
+  syncSound(){const m=Save.d.settings.mute;$('pSound').textContent=T('SOUND: {0}',T(m?'OFF':'ON'));$('hudSound').classList.toggle('off',m);$('hudSound').setAttribute('aria-label',T('Sound')+': '+T(m?'OFF':'ON'));},
   toast(msg){Notify.push(msg);},
   refreshMenu(){
     Meta.ensureDaily();
@@ -3570,7 +3611,7 @@ const UI={
       case'unlock':{const from=$('cxDetail').classList.contains('show')?'codex':'shop';if(Meta.unlock(el.dataset.id))Reveal.open(el.dataset.id,from);break;}
       case'cx':this.openDetail(el.dataset.id);break;
       case'claim':if(Meta.claim(+el.dataset.i)){this.renderMissions();this.toast(T('Reward claimed!'));}break;
-      case'tSound':Save.d.settings.mute=!Save.d.settings.mute;Save.dirty();Sound.apply();this.renderSettings();$('pSound').textContent=T('SOUND: {0}',T(Save.d.settings.mute?'OFF':'ON'));break;
+      case'tSound':case'hudSnd':Sound.unlock();Save.d.settings.mute=!Save.d.settings.mute;Save.dirty();Sound.apply();this.renderSettings();this.syncSound();break;
       case'tMusic':Save.d.settings.music=!Save.d.settings.music;Save.dirty();Sound.apply();this.renderSettings();break;
       case'tShake':Save.d.settings.shake=!Save.d.settings.shake;Save.dirty();this.renderSettings();break;
       case'tMotion':Save.d.settings.reducedMotion=!reducedMotion();Save.dirty();this.renderSettings();break;
@@ -4153,7 +4194,7 @@ async function boot(){
 }
 
 /* test/debug hooks (read-only use in production) */
-window.BONK={Game,CG,Save,Meta,Upgrades,Fusion,Board,Input,CONFIG,balls,parts,texts,fx,view,Tut,Notify,Reveal,UI,Cannon,HeroEvents,MUZZLE,Mastery,Daily,drawUnit,UNLOCK_COST,
+window.BONK={Game,CG,Save,Meta,Upgrades,Fusion,Board,Input,CONFIG,balls,parts,texts,fx,view,Tut,Notify,Reveal,UI,Cannon,HeroEvents,MUZZLE,Mastery,Daily,drawUnit,spriteLv,UNLOCK_COST,
   get R(){return R;},tick,render,
   advance(sec,fps){const dt=1/fps;let n=Math.round(sec*fps);while(n-->0)tick(dt);},
   logical:{W,H,LX,LY,GATE_Y,TOP,ROW_H,CELL,DANGER_Y}};

@@ -180,10 +180,27 @@ Two separate tracks:
   - Achievements are a row of 10 banners on a gold rod: earned = waving gold flag, locked = dark flag with progress (e.g. 5 / 8, 2 / 25).
 - **Save v4:** adds `mastery` and `legend`, plus new achievements. Older saves seed mastery from past evolutions (Lv3 → ★2, Lv4 → ★3).
 
+## iPhone Home Screen app and saved progress
+
+- **Install:** open the GitHub Pages URL in Safari → Share → Add to Home Screen. The icon is named **蹦蹦英雄** (`apple-touch-icon.png`, drawn from the game's own hero art). The page title is "BONBOOM HERO! 蹦蹦英雄：彈珠超進化". `apple-mobile-web-app-capable` and `manifest.webmanifest` (`display: standalone`) make it open full screen with no Safari bars. There is no service worker and no offline cache.
+- **Separate saves:** iOS gives a Home Screen app its own storage, separate from Safari. Safari works as a trial with its own save. Nothing syncs the two, and neither ever deletes the other.
+- **What is saved:** everything permanent (coins, heroes, upgrades, codex, achievements, mastery, Hall of Legends, missions and claimed rewards, tutorial flags, settings). It lives in `localStorage` key `bonkageddon_save`, unchanged from earlier versions. On CrazyGames the SDK data module is used instead, as before.
+- **When it is saved:**
+  - Purchases, unlocks and reward claims are written in the same tap and verified by reading them back.
+  - Other permanent changes are written right after the current step, with several changes in one step giving one write. There is no timer.
+  - `pagehide` and `visibilitychange` are extra save points only.
+- **Safety:**
+  - Nothing is written until the save has been loaded. A slow SDK start plus an early app switch can no longer write an empty save over real progress.
+  - Every write also updates `bonkageddon_save_bak`. A corrupt main save is kept as `bonkageddon_save_corrupt` and the backup is loaded instead.
+  - If storage cannot be read, the game runs but never writes over the unreadable save.
+  - A save from a newer version keeps its version number and any fields this version does not know, so an old cached page cannot strip them.
+  - Old saves migrate v1 → v4 as before. Write failures (quota, private mode) are caught.
+  - `navigator.storage.persist()` asks the browser not to evict the data.
+
 ## Run the tests
 
 ```
-python tests/run_tests.py <output_dir> [functional touch physics caps content balance restart persist sdk realsdk merge tutorial onboard phase5 evolution i18n shots]
+python tests/run_tests.py <output_dir> [functional touch physics caps content balance restart persist save sdk realsdk merge tutorial onboard phase5 evolution i18n shots]
 ```
 Needs Chrome at the default install path and `pip install websocket-client`. Screenshots are written to `<output_dir>/shots`.
 
