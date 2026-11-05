@@ -206,10 +206,22 @@ Two separate tracks:
   - **Saved flag:** `a2hs` (0 = never shown, 1 = shown or skipped, 2 = finished). It is saved the moment the tutorial opens. Settings → "Add to Home Screen" replays it.
   - **Where it does not appear:** desktop, Android, Chrome/Firefox/in-app browsers on iPhone, already-installed Home Screen mode, and iframes (CrazyGames).
 
+- **iPhone audio:**
+  - **Start:** on the first trusted tap (Play, Sound ON, or any touchend/pointerup/click), the game sets `navigator.audioSession.type = "playback"` (iOS 17+), then creates or resumes the AudioContext in the same tap. Play, PLAY AGAIN and Sound ON then play a short start jingle. Nothing plays while the player has muted the game.
+  - **No silent tracks:** there is no hidden or looping silent media element. The old silent-WAV fallback was removed. The only unlock is a one-shot 1-sample buffer started in the tap.
+  - **Recovery:** after an app switch, lock screen, tab switch, Home Screen relaunch (`pageshow`) or a CrazyGames ad, the session type is re-set and the context resumed. If iOS refuses, the next tap resumes it, or builds a fresh context if it still will not run.
+  - **Diagnostics:** add `?audiodebug=1` to the URL for a developer overlay showing session type/state, context state, mute flags, last event/error and confirmation status.
+  - **Limit:** the volume buttons follow media volume only while iOS considers the playback session active, that is while sound is actually playing. JavaScript cannot force this.
+
+- **Opened inside LINE / Instagram / Facebook:**
+  - **LINE:** the page reloads itself with `?openExternalBrowser=1`, which LINE opens in the phone's default browser. This happens in `<head>`, before the game loads.
+  - **Other in-app browsers:** a screen asks the player to switch, because sound, saved progress and Add to Home Screen may not work there. It shows how to find the app's "Open in browser" menu (⋯ / ⋮), plus COPY LINK and PLAY HERE ANYWAY. On Android, OPEN IN BROWSER hands the URL to Chrome (`intent://`, falls back to the web URL). iPhone apps have no way for a page to open Safari, so only the hint and COPY LINK are offered there.
+  - **Not shown:** in normal browsers, in iframes (CrazyGames), or from the Home Screen app. After PLAY HERE ANYWAY it stays closed for the rest of that session.
+
 ## Run the tests
 
 ```
-python tests/run_tests.py <output_dir> [functional touch physics caps content balance restart persist save a2hs sdk realsdk merge tutorial onboard phase5 evolution i18n shots]
+python tests/run_tests.py <output_dir> [functional touch physics caps content balance restart persist save a2hs inapp audio sdk realsdk merge tutorial onboard phase5 evolution i18n shots]
 ```
 Needs Chrome at the default install path and `pip install websocket-client`. Screenshots are written to `<output_dir>/shots`.
 

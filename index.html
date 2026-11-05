@@ -6,6 +6,15 @@
 <meta name="theme-color" content="#1a0b33">
 <title>BONBOOM HERO! 蹦蹦英雄：彈珠超進化</title>
 <meta name="description" content="BONBOOM HERO! 蹦蹦英雄：彈珠超進化 — 彈越多，爆越大！">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="蹦蹦英雄 BONBOOM HERO!">
+<meta property="og:title" content="BONBOOM HERO! 蹦蹦英雄">
+<meta property="og:description" content="彈珠超進化・彈越多，爆越大！手機電腦都能玩">
+<meta property="og:url" content="https://yunchieh0227.github.io/bonboom-hero/">
+<meta property="og:image" content="https://yunchieh0227.github.io/bonboom-hero/cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="application-name" content="蹦蹦英雄">
 <meta name="apple-mobile-web-app-title" content="蹦蹦英雄">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,6 +23,13 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <link rel="manifest" href="manifest.webmanifest">
+<script>
+// Opened from a LINE chat: hand the page to the phone's default browser (LINE supports ?openExternalBrowser=1).
+// In-app browsers often have no sound, lose saved progress and cannot "Add to Home Screen".
+(function(){try{if(window.top!==window.self||!/\bLine\//i.test(navigator.userAgent))return;
+  var u=new URL(location.href);if(u.searchParams.has('openExternalBrowser'))return;
+  u.searchParams.set('openExternalBrowser','1');location.replace(u.href);}catch(e){}})();
+</script>
 <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -183,12 +199,16 @@ body.rm .fz.on:before,body.rm .fz.on canvas,body.rm .flag.on{animation:none!impo
 /* readable descriptions: more line spacing */
 .tag,.small,.item .ds,.goal .g2,.cxIntro,#cdInfo,#rvCard .rd,#cxInfo,.panel{line-height:1.6}
 .card .dsc{line-height:1.5}.item .ds{margin-top:4px}#cdInfo .sec{margin-top:12px;padding-top:9px}#cdInfo .sec>div{margin-top:4px}
-#a2hs{position:absolute;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;padding:10px 14px;
+#a2hs,#inapp{position:absolute;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;padding:10px 14px;
   background:radial-gradient(ellipse at 50% 20%,#3d1a6e,#0b0518 65%);text-align:center;pointer-events:auto}
-#a2hs.show{display:flex;animation:pop .35s cubic-bezier(.2,1.5,.4,1)}
+#inapp{z-index:45;gap:6px}
+#inapp .a2T{font-size:26px}
+#inapp .a2S{margin-bottom:4px}
+#inapp .ia{font-weight:900;font-size:16px;line-height:1.6;color:#ffd76a;background:rgba(0,0,0,.3);border-radius:14px;padding:10px 14px;margin:6px 0 10px;max-width:380px}
+#a2hs.show,#inapp.show{display:flex;animation:pop .35s cubic-bezier(.2,1.5,.4,1)}
 #a2hs .a2Step{font-weight:900;font-size:13px;letter-spacing:2px;color:#ffd76a}
-#a2hs .a2T{font-weight:900;font-size:24px;line-height:1.25;color:#fff;margin:4px 0 2px;text-shadow:0 3px 0 #b0285a;max-width:400px}
-#a2hs .a2S{font-weight:800;font-size:14px;line-height:1.5;color:#dcd2ff;min-height:21px;max-width:380px}
+#a2hs .a2T,#inapp .a2T{font-weight:900;font-size:24px;line-height:1.25;color:#fff;margin:4px 0 2px;text-shadow:0 3px 0 #b0285a;max-width:400px}
+#a2hs .a2S,#inapp .a2S{font-weight:800;font-size:14px;line-height:1.5;color:#dcd2ff;min-height:21px;max-width:380px}
 #a2hs canvas{width:250px;height:452px;margin:8px 0 6px}
 #a2hs .a2Dots i{display:inline-block;width:9px;height:9px;border-radius:5px;background:#4a3b78;margin:0 4px;transition:all .2s}
 #a2hs .a2Dots i.on{width:24px;background:#ffd76a}
@@ -288,6 +308,16 @@ body.rm .btn.glow,body.rm .goal.ready,body.rm .cx canvas,body.rm .cx.un:before,b
     <canvas id="a2Cv"></canvas>
     <div class="a2Dots" id="a2Dots"><i></i><i></i><i></i><i></i></div>
     <div class="row"><button class="btn gray small" data-a="a2Skip" id="a2Skip">SKIP</button><button class="btn green" data-a="a2Next" id="a2Next">NEXT ▶</button></div>
+  </div>
+
+  <div id="inapp" role="dialog" aria-modal="true" aria-labelledby="iaT">
+    <img src="apple-touch-icon.png" alt="" width="96" height="96" style="border-radius:22px;margin-bottom:6px">
+    <div class="a2T" id="iaT"></div>
+    <div class="a2S" id="iaS"></div>
+    <div class="ia" id="iaHow"></div>
+    <button class="btn big green" data-a="iaOpen" id="iaOpen"></button>
+    <button class="btn blue small" data-a="iaCopy" id="iaCopy"></button>
+    <button class="btn gray small" data-a="iaStay" id="iaStay"></button>
   </div>
 
   <div class="screen" id="settings">
@@ -526,6 +556,11 @@ const ZH={
   'Drag it back onto the board so it fights again.':'拖回盤子就會上場','SUMMON FOCUS UNLOCKED!':'召喚偏好開放！','Tap a hero: it is summoned {0}× more often.':'點一隻，出現機率 {0} 倍',
   'Elite Hero (Lv3)':'精英英雄（Lv3）','Legendary Hero (Lv4)':'傳說英雄（Lv4）','??? — merge to discover':'??? — 合成就知道','Achievements':'成就','Starter: {0}':'初始英雄：{0}',': ':'：','FAST ▶▶':'快轉 ▶▶','DRAG & RELEASE':'拖著再放開','NEW DISCOVERY!':'新發現！','TAP TO CONTINUE':'點一下繼續',
   'Add to Home Screen':'加到主畫面','HOW?':'教我','SKIP':'略過','NEXT ▶':'下一步 ▶','GOT IT!':'知道了！',
+  'Open in your browser':'用瀏覽器開比較好玩','Sound and saved progress may not work inside this app.':'在這個 App 裡面玩，可能沒聲音、進度也存不住',
+  'OPEN IN BROWSER':'用瀏覽器開','COPY LINK':'複製連結','PLAY HERE ANYWAY':'先在這裡玩','Link copied!':'連結複製好了！',
+  'Tap ⋯ in the corner, then "Open in Safari"':'點右上角或右下角的 ⋯\n選「用 Safari 開啟」',
+  'Tap ⋮ in the corner, then "Open in browser"':'點右上角的 ⋮\n選「用瀏覽器開啟」',
+  'Or copy the link and paste it into Safari / Chrome':'或複製連結，貼到 Safari / Chrome 開',
   'Tap Share':'點「分享」','The square with an up arrow at the bottom of Safari. Not there? Tap ⋯ first.':'Safari 下方的方框＋箭頭（沒看到就先點 ⋯）',
   'Tap "Add to Home Screen"':'點「加入主畫面」','Scroll down the list to find it.':'往下滑就找得到',
   'Tap Add':'點「加入」','The name is already filled in: 蹦蹦英雄':'名字已經填好：蹦蹦英雄',
@@ -760,44 +795,66 @@ const IS_IOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='
 const Sound={
   ctx:null,master:null,sfx:null,music:null,noiseBuf:null,last:{},voices:0,hidden:false,
   musicStep:0,musicNext:0,musicTimer:0,
-  // must run inside a real user gesture (touchend / pointerup / click / keydown); a touch pointerdown does not count on iOS
+  rebuildNext:false,   // the context did not come back after an interruption: build a fresh one on the next tap
+  diag:{err:'',event:'',confirm:'',inits:0,recoveries:0},
+  note(ev,err){this.diag.event=ev+' @'+new Date().toLocaleTimeString();if(err)this.diag.err=ev+': '+((err&&err.message)||err);},
+  // iOS 17+: "playback" = media audio (like a video app): plays through the silent switch, volume buttons act on media volume
+  // while sound is actually playing. Must be set before the AudioContext starts. Unsupported browsers simply skip it.
+  session(){try{const a=navigator.audioSession;if(a&&a.type!=='playback')a.type='playback';}catch(e){this.note('audioSession',e);}},
+  // must run inside a trusted user gesture (touchend / pointerup / click / keydown); a touch pointerdown does not count on iOS
   unlock(){
-    // iPhone: play through the ring/silent switch like a game, not as muted "ambient" sound
-    try{if(navigator.audioSession&&navigator.audioSession.type!=='playback')navigator.audioSession.type='playback';}catch(e){}
-    if(!navigator.audioSession&&IS_IOS)this.htmlKick();
-    if(this.ctx){if(this.ctx.state!=='running')this.ctx.resume().catch(()=>{});this.kick();return;}
-    const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+    this.session();
+    if(this.ctx&&(this.rebuildNext||this.ctx.state==='closed'))this.teardown();
+    if(this.ctx){if(this.ctx.state!=='running'){this.resume('gesture');this.kick();}return;}
+    const AC=window.AudioContext||window.webkitAudioContext;if(!AC){this.note('init','Web Audio not supported');return;}
     try{
-      const c=this.ctx=new AC();
+      const c=this.ctx=new AC();this.diag.inits++;
       this.master=c.createGain();this.master.gain.value=0;this.master.connect(c.destination);
       const comp=c.createDynamicsCompressor();comp.threshold.value=-14;comp.ratio.value=6;comp.connect(this.master);
       this.sfx=c.createGain();this.sfx.gain.value=0.9;this.sfx.connect(comp);
       this.music=c.createGain();this.music.gain.value=0;this.music.connect(comp);
-      const n=c.sampleRate;const b=this.noiseBuf=c.createBuffer(1,n,n);const ch=b.getChannelData(0);
-      for(let i=0;i<n;i++)ch[i]=Math.random()*2-1;
+      if(!this.noiseBuf||this.noiseBuf.sampleRate!==c.sampleRate){const n=c.sampleRate;const b=this.noiseBuf=c.createBuffer(1,n,n);const ch=b.getChannelData(0);
+        for(let i=0;i<n;i++)ch[i]=Math.random()*2-1;}
+      c.onstatechange=()=>{this.note('context '+c.state);if(c.state==='running')this.apply();};
       this.apply();
       this.musicTimer=setInterval(()=>this.schedMusic(),60);
-      if(c.state!=='running')c.resume().catch(()=>{});this.kick();
-    }catch(e){console.warn('audio init failed',e);this.ctx=null;}
+      if(c.state!=='running')this.resume('init');this.kick();
+      this.note('init');
+    }catch(e){this.note('init',e);this.ctx=null;}
   },
-  // a 1-sample silent buffer started inside the gesture: the classic WebKit audio unlock
+  // resume and verify; if iOS leaves the context suspended/interrupted, rebuild it on the next tap
+  resume(why){
+    const c=this.ctx;if(!c)return Promise.resolve(false);
+    let p;try{p=c.resume();}catch(e){this.note('resume '+why,e);this.rebuildNext=true;return Promise.resolve(false);}
+    return Promise.resolve(p).then(()=>{if(c.state==='running'){if(why!=='init'&&why!=='gesture')this.diag.recoveries++;this.rebuildNext=false;return true;}
+        this.rebuildNext=why==='gesture';return false;},
+      e=>{this.note('resume '+why,e);this.rebuildNext=why==='gesture';return false;});
+  },
+  teardown(){const c=this.ctx;clearInterval(this.musicTimer);this.ctx=null;this.rebuildNext=false;this.voices=0;this.diag.recoveries++;
+    this.note('rebuild context');try{c.onstatechange=null;c.close();}catch(e){}},
+  // a 1-sample silent buffer started inside the gesture: the classic WebKit unlock (one-shot, not a looping track)
   kick(){try{const c=this.ctx,s=c.createBufferSource();s.buffer=c.createBuffer(1,1,22050);s.connect(c.destination);s.start(0);}catch(e){}},
-  // older iOS without navigator.audioSession: a playing (silent) media element switches the page to the playback category
-  htmlKick(){
-    try{if(!this.silentEl){const n=800,b=new Uint8Array(44+n),v=new DataView(b.buffer),w=(o,t)=>{for(let i=0;i<t.length;i++)b[o+i]=t.charCodeAt(i);};
-        w(0,'RIFF');v.setUint32(4,36+n,true);w(8,'WAVEfmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,8000,true);v.setUint32(28,8000,true);
-        v.setUint16(32,1,true);v.setUint16(34,8,true);w(36,'data');v.setUint32(40,n,true);b.fill(128,44);
-        const a=this.silentEl=new Audio(URL.createObjectURL(new Blob([b],{type:'audio/wav'})));a.loop=true;a.setAttribute('playsinline','');a.volume=0.01;}
-      if(this.silentEl.paused&&!this.hidden)this.silentEl.play().catch(()=>{});}catch(e){}
+  // back from another app / lock screen / tab switch / ad: re-assert the session and try to resume.
+  // If iOS refuses without a tap, the next tap (unlock) resumes or rebuilds the context.
+  wake(why){if(this.hidden)return;this.session();if(this.ctx&&this.ctx.state!=='running')this.resume(why);this.apply();},
+  // audible "ready" sound right after Play / Sound ON (never when the player muted the game)
+  confirm(){
+    if(this.muted()){this.diag.confirm='skipped (muted)';return;}
+    if(!this.ctx){this.diag.confirm='no audio context';return;}
+    const go=()=>{if(this.muted()){this.diag.confirm='skipped (muted)';return;}this.last.start=0;this.play('start');
+      this.diag.confirm=(this.ctx&&this.ctx.state==='running'?'scheduled':'not running: '+(this.ctx&&this.ctx.state))+' @'+new Date().toLocaleTimeString();};
+    if(this.ctx.state==='running')go();else{this.diag.confirm='waiting for resume';this.resume('confirm').then(ok=>ok?go():(this.diag.confirm='context '+(this.ctx&&this.ctx.state)));}
   },
   muted(){return Save.d.settings.mute||CG.sdkMute||Game.state==='AD_PLAYING'||this.hidden;},
   apply(){
-    if(this.silentEl&&this.hidden&&!this.silentEl.paused)this.silentEl.pause();
     if(!this.ctx)return;const t=this.ctx.currentTime;
     this.master.gain.setTargetAtTime(this.muted()?0:0.85,t,0.03);
     const mOn=Save.d.settings.music&&Game.isGameplay();
     this.music.gain.setTargetAtTime(mOn?0.22:0,t,0.3);
   },
+  info(){const a=navigator.audioSession;return{session:a?a.type+' / '+(a.state||'?'):'not supported',context:this.ctx?this.ctx.state+' '+this.ctx.sampleRate+'Hz':'none',
+    mute:Save.d.settings.mute,music:Save.d.settings.music,sdkMute:CG.sdkMute,hidden:this.hidden,ad:Game.state==='AD_PLAYING',rebuildNext:this.rebuildNext,
+    inits:this.diag.inits,recoveries:this.diag.recoveries,event:this.diag.event,error:this.diag.err||'-',confirm:this.diag.confirm||'-'};},
   can(name,gapMs){const now=performance.now();if((this.last[name]||0)+gapMs>now)return false;this.last[name]=now;return true;},
   ok(){return this.ctx&&this.ctx.state==='running'&&!this.muted()&&this.voices<30;},
   tone(f,d,type,v,f2,delay,dest){
@@ -845,6 +902,7 @@ const Sound={
       case'click':this.tone(880,0.04,'square',0.05,1200);break;
       case'hurt':this.tone(160,0.3,'sawtooth',0.18,60);this.noise(0.25,0.25,800,1,'lowpass');break;
       case'over':[523,440,349,262].forEach((f,i)=>this.tone(f,0.25,'triangle',0.15,0,i*0.16));break;
+      case'start':[523,659,784,1047].forEach((f,i)=>this.tone(f,0.16,'square',0.07,0,i*0.065));this.tone(1568,0.3,'triangle',0.06,0,0.26);break;
       case'coin':this.tone(1320,0.08,'square',0.06);this.tone(1760,0.12,'square',0.05,0,0.06);break;
       case'clear':[784,988,1175,1568].forEach((f,i)=>this.tone(f,0.12,'triangle',0.1,0,i*0.05));break;
       case'wave':this.tone(392,0.12,'square',0.06,0);this.tone(523,0.18,'square',0.06,0,0.1);break;
@@ -1283,9 +1341,9 @@ const Game={
   setState(s){
     const ok=(TRANS[this.state]||[]).indexOf(s)>=0;
     if(!ok){console.warn('[State] illegal transition',this.state,'->',s);return false;}
-    this.state=s;
+    const prev=this.state;this.state=s;
     CG.setPlaying(this.isGameplay());
-    Sound.apply();
+    if(prev==='AD_PLAYING')Sound.wake('ad');else Sound.apply(); // an ad may have taken the audio session
     UI.onState(s);
     return true;
   },
@@ -3640,7 +3698,7 @@ const UI={
     const a=el.dataset.a;
     if(a!=='pick')Sound.play('click');
     switch(a){
-      case'play':if(Game.state==='MENU')Game.startRun();break;
+      case'play':if(Game.state==='MENU'){Game.startRun();Sound.confirm();}break;
       case'shop':this.back=Game.state==='RESULTS'?'results':'menu';this.sub('shop');break;
       case'codex':this.back=Game.state==='RESULTS'?'results':'menu';this.sub('codex');break;
       case'goal':if(el.dataset.id){this.back='menu';this.openDetail(el.dataset.id);}break;
@@ -3654,6 +3712,9 @@ const UI={
       case'a2Open':A2HS.open();break;
       case'a2Next':A2HS.next();break;
       case'a2Skip':A2HS.close(false);break;
+      case'iaOpen':InApp.go();break;
+      case'iaCopy':InApp.copy();break;
+      case'iaStay':InApp.close();break;
       case'missions':this.back='menu';this.sub('missions');break;
       case'settings':this.back='menu';this.sub('settings');break;
       case'back':if(this.back==='results'){this.show('results');this.showResults();}else{this.show('menu');this.refreshMenu();}break;
@@ -3661,7 +3722,7 @@ const UI={
       case'unlock':{const from=$('cxDetail').classList.contains('show')?'codex':'shop';if(Meta.unlock(el.dataset.id))Reveal.open(el.dataset.id,from);break;}
       case'cx':this.openDetail(el.dataset.id);break;
       case'claim':if(Meta.claim(+el.dataset.i)){this.renderMissions();this.toast(T('Reward claimed!'));}break;
-      case'tSound':case'hudSnd':Sound.unlock();Save.d.settings.mute=!Save.d.settings.mute;Save.dirty();Sound.apply();this.renderSettings();this.syncSound();break;
+      case'tSound':case'hudSnd':Sound.unlock();Save.d.settings.mute=!Save.d.settings.mute;Save.dirty();Sound.apply();this.renderSettings();this.syncSound();if(!Save.d.settings.mute)Sound.confirm();break;
       case'tMusic':Save.d.settings.music=!Save.d.settings.music;Save.dirty();Sound.apply();this.renderSettings();break;
       case'tShake':Save.d.settings.shake=!Save.d.settings.shake;Save.dirty();this.renderSettings();break;
       case'tMotion':Save.d.settings.reducedMotion=!reducedMotion();Save.dirty();this.renderSettings();break;
@@ -3681,7 +3742,7 @@ const UI={
       case'revive':Game.revive();break;
       case'noRevive':if(Game.state==='GAME_OVER')Game.toResults();break;
       case'double':Game.doubleCoins();break;
-      case'again':Game.playAgain();break;
+      case'again':Game.playAgain();Sound.confirm();break;
       case'menu':if(Game.state==='RESULTS')Game.setState('MENU');break;
     }
   }
@@ -4217,8 +4278,11 @@ function drawParade(){
 }
 document.addEventListener('visibilitychange',()=>{
   hidden=document.hidden;lastTs=0;acc=0;Sound.hidden=hidden;Sound.apply();
-  if(hidden){Input.cancel();Save.flush();}
+  if(hidden){Input.cancel();Save.flush();}else Sound.wake('visible');
 });
+window.addEventListener('pageshow',()=>Sound.wake('pageshow'));
+window.addEventListener('focus',()=>Sound.wake('focus'));
+try{if(navigator.audioSession)navigator.audioSession.addEventListener('statechange',()=>{Sound.note('session '+navigator.audioSession.state);if(navigator.audioSession.state!=='interrupted')Sound.wake('session');});}catch(e){}
 window.addEventListener('pagehide',()=>Save.flush());
 window.addEventListener('resize',()=>{resize();paradeCtx=null;});
 
@@ -4237,7 +4301,7 @@ const A2HS={
   eligible(){return this.ios()&&this.safari()&&!this.standalone()&&!this.framed();},
   due(){return this.eligible()&&!Save.d.a2hs&&Save.d.stats.runs>=1;},
   // called on the main menu; waits for a calm moment (no reveal / other overlay), shows at most once
-  maybe(){if(!this.due())return;setTimeout(()=>{if(this.due()&&!this.on&&Game.state==='MENU'&&UI.cur==='menu'&&!Reveal.on)this.open();},700);},
+  maybe(){if(!this.due())return;setTimeout(()=>{if(this.due()&&!this.on&&!InApp.on&&Game.state==='MENU'&&UI.cur==='menu'&&!Reveal.on)this.open();},700);},
   open(after){
     Save.d.a2hs=Math.max(1,Save.d.a2hs|0);Save.flush(); // counted as seen right away: never shown again automatically
     if(!this.img){this.img=new Image();this.img.src='apple-touch-icon.png';}
@@ -4359,6 +4423,45 @@ const A2HS={
   }
 };
 
+/* ============================================================
+   Opened inside an app (LINE, Instagram, Facebook, Messenger, WeChat, TikTok...): ask to switch to the real browser.
+   LINE is redirected automatically in <head>; this screen is the fallback and covers the other apps.
+   ============================================================ */
+const InApp={
+  on:false,
+  ua(){return navigator.userAgent;},
+  line(){return /\bLine\//i.test(this.ua());},
+  android(){return /Android/i.test(this.ua());},
+  detect(){const ua=this.ua();
+    if(/\bLine\/|FBAN|FBAV|FB_IAB|FBIOS|Instagram|MicroMessenger|musical_ly|BytedanceWebview|TikTok|Snapchat|KAKAOTALK|Twitter|\bWhatsApp/i.test(ua))return true;
+    return /Android/i.test(ua)&&/; wv\)/.test(ua);}, // other Android WebViews
+  eligible(){return this.detect()&&!A2HS.framed()&&!A2HS.standalone();},
+  dismissed(){try{return sessionStorage.getItem('bonk_inapp')==='1';}catch(e){return false;}},
+  maybe(){if(this.eligible()&&!this.dismissed())this.open();},
+  // a URL the current app hands to the system browser
+  target(){
+    const u=new URL(location.href);u.searchParams.delete('openExternalBrowser');
+    if(this.line()){u.searchParams.set('openExternalBrowser','1');return u.href;}
+    if(this.android())return 'intent://'+u.host+u.pathname+u.search+u.hash+'#Intent;scheme='+u.protocol.replace(':','')+';package=com.android.chrome;S.browser_fallback_url='+encodeURIComponent(u.href)+';end';
+    return '';
+  },
+  open(){this.on=true;Input.cancel&&Input.cancel();
+    $('iaT').textContent=T('Open in your browser');
+    $('iaS').textContent=T('Sound and saved progress may not work inside this app.');
+    $('iaHow').innerText=this.android()?T('Tap ⋮ in the corner, then "Open in browser"'):T('Tap ⋯ in the corner, then "Open in Safari"');
+    $('iaOpen').textContent=T('OPEN IN BROWSER');$('iaOpen').style.display=this.target()?'':'none';
+    $('iaCopy').textContent=T('COPY LINK');$('iaStay').textContent=T('PLAY HERE ANYWAY');
+    $('inapp').classList.add('show');},
+  close(){this.on=false;$('inapp').classList.remove('show');try{sessionStorage.setItem('bonk_inapp','1');}catch(e){}},
+  go(){const t=this.target();if(t)location.href=t;},
+  link(){const u=new URL(location.href);u.searchParams.delete('openExternalBrowser');return u.href;},
+  copy(){const href=this.link(),done=()=>UI.toast(T('Link copied!'));
+    const old=()=>{const ta=document.createElement('textarea');ta.value=href;ta.setAttribute('readonly','');ta.style.cssText='position:fixed;left:-999px;top:0;opacity:0';
+      document.body.appendChild(ta);ta.select();ta.setSelectionRange(0,href.length);let ok=false;try{ok=document.execCommand('copy');}catch(e){}ta.remove();
+      if(ok)done();else window.prompt(T('Or copy the link and paste it into Safari / Chrome'),href);};
+    try{if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(href).then(done,old);else old();}catch(e){old();}},
+};
+
 async function boot(){
   resize();
   setupInput(cv);
@@ -4376,11 +4479,16 @@ async function boot(){
   CG.loadingStop();
   if(!Save.d.tutorialDone&&Save.d.stats.runs===0){Game.newRun();Game.setState('AIMING');}
   else Game.setState('MENU');
+  InApp.maybe();
   requestAnimationFrame(frame);
+  // developer-only audio diagnostics: add ?audiodebug=1 to the URL
+  if(QS.has('audiodebug')){const p=document.createElement('pre');p.id='audioDiag';
+    p.style.cssText='position:fixed;left:4px;bottom:4px;z-index:99;margin:0;padding:6px 8px;max-width:96vw;background:rgba(0,0,0,.8);color:#7CFC9A;font:11px/1.35 ui-monospace,Menlo,monospace;white-space:pre-wrap;pointer-events:none;border-radius:6px';
+    document.body.appendChild(p);const up=()=>{const i=Sound.info();p.textContent=Object.keys(i).map(k=>k+': '+i[k]).join('\n');};up();setInterval(up,500);}
 }
 
 /* test/debug hooks (read-only use in production) */
-window.BONK={Game,CG,Save,Sound,A2HS,Meta,Upgrades,Fusion,Board,Input,CONFIG,balls,parts,texts,fx,view,Tut,Notify,Reveal,UI,Cannon,HeroEvents,MUZZLE,Mastery,Daily,drawUnit,spriteLv,UNLOCK_COST,
+window.BONK={Game,CG,Save,Sound,A2HS,InApp,Meta,Upgrades,Fusion,Board,Input,CONFIG,balls,parts,texts,fx,view,Tut,Notify,Reveal,UI,Cannon,HeroEvents,MUZZLE,Mastery,Daily,drawUnit,spriteLv,UNLOCK_COST,
   get R(){return R;},tick,render,
   advance(sec,fps){const dt=1/fps;let n=Math.round(sec*fps);while(n-->0)tick(dt);},
   logical:{W,H,LX,LY,GATE_Y,TOP,ROW_H,CELL,DANGER_Y}};

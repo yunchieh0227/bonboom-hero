@@ -693,6 +693,126 @@ def main():
             c.pump()
             check("no JS errors (a2hs)", not c.errors(), c.errors(False))
 
+        # ---------------- opened inside LINE / Instagram / Facebook: switch to the real browser ----------------
+        if want("inapp"):
+            LINE_IOS = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Safari Line/14.20.0"
+            LINE_AND = "Mozilla/5.0 (Linux; Android 14; Pixel 8; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0 Mobile Safari/537.36 Line/14.20.0/IAB"
+            IG_IOS = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 350.0.0.0 (iPhone15,2; iOS 18_5; zh_TW)"
+            FB_AND = "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP1A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0 Mobile Safari/537.36 [FB_IAB/FB4A;FBAV/480.0.0.0;]"
+            SAFARI = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1"
+            fresh(c)
+            desk = c.ev("navigator.userAgent")
+
+            def open_as(ua, plat, q="nosdk=1&seed=42"):
+                c.send("Emulation.setUserAgentOverride", userAgent=ua, platform=plat)
+                c.nav("http://127.0.0.1:8765/tests/", wait_expr="document.readyState==='complete'"); c.ev("localStorage.clear();sessionStorage.clear()")
+                c.nav(BASE + "?" + q); time.sleep(0.4)
+
+            shown = "document.getElementById('inapp').classList.contains('show')"
+            open_as(LINE_IOS, "iPhone")
+            check("LINE: page reloads itself with ?openExternalBrowser=1 (LINE opens that in the phone's browser)",
+                  "openExternalBrowser=1" in c.ev("location.search") and "nosdk=1" in c.ev("location.search"), c.ev("location.href"))
+            check("LINE (still inside after the hand-off): fallback screen shown with an OPEN IN BROWSER button",
+                  c.ev(shown) is True and c.ev("getComputedStyle(document.getElementById('iaOpen')).display") != "none")
+            t = c.ev("BONK.InApp.target()")
+            check("LINE button target keeps the URL and adds openExternalBrowser=1 once", t.count("openExternalBrowser=1") == 1 and "nosdk=1" in t, t)
+            check("copied link is the clean URL (no openExternalBrowser)", "openExternalBrowser" not in c.ev("BONK.InApp.link()"))
+            open_as(LINE_AND, "Linux armv8l")
+            check("LINE on Android: also redirected", "openExternalBrowser=1" in c.ev("location.search") and c.ev(shown) is True)
+
+            open_as(IG_IOS, "iPhone")
+            check("Instagram on iPhone: screen shown with the ⋯ → Safari hint, no broken button",
+                  c.ev(shown) is True and "Safari" in c.ev("document.getElementById('iaHow').innerText") and c.ev("getComputedStyle(document.getElementById('iaOpen')).display") == "none"
+                  and "openExternalBrowser" not in c.ev("location.search"))
+            c.ev("BONK.Save.d.stats.runs=2;BONK.Save.d.a2hs=0;BONK.Game.setState('MENU')"); time.sleep(1.0)
+            check("the Add-to-Home-Screen tutorial never opens on top of it", c.ev("BONK.A2HS.on") is False)
+            c.ev("navigator.clipboard&&(navigator.clipboard.writeText=async v=>{window.__copied=v});document.getElementById('iaCopy').click()"); time.sleep(0.2)
+            check("COPY LINK copies the game URL", (c.ev("window.__copied") or "").startswith(BASE), c.ev("window.__copied"))
+            c.ev("document.getElementById('iaStay').click()")
+            check("PLAY HERE ANYWAY closes it", c.ev(shown) is False and c.ev("BONK.InApp.on") is False)
+            c.nav(BASE + "?nosdk=1&seed=42"); time.sleep(0.4)
+            check("not asked again in the same session after choosing to stay", c.ev(shown) is False)
+
+            open_as(FB_AND, "Linux armv8l")
+            t = c.ev("BONK.InApp.target()")
+            check("Facebook on Android: OPEN IN BROWSER hands the URL to Chrome (intent:// with web fallback)",
+                  c.ev(shown) is True and t.startswith("intent://127.0.0.1:8765/index.html?nosdk=1") and "scheme=http;" in t and "package=com.android.chrome" in t and "S.browser_fallback_url=" in t, t)
+            check("Android hint mentions the ⋮ menu", "⋮" in c.ev("document.getElementById('iaHow').innerText"))
+            c.ev("BONK.Save.d.settings.lang='zh';BONK.Save.flush();sessionStorage.clear()"); c.nav(BASE + "?nosdk=1&seed=42"); time.sleep(0.4)
+            c.screenshot(os.path.join(shots, "inapp_zh.png"))
+            check("Chinese text", c.ev("document.getElementById('iaT').textContent") == "用瀏覽器開比較好玩" and c.ev("document.getElementById('iaOpen').textContent") == "用瀏覽器開"
+                  and "瀏覽器" in c.ev("document.getElementById('iaHow').innerText"))
+
+            for ua, plat, name in ((SAFARI, "iPhone", "iPhone Safari"), (desk, "Win32", "desktop")):
+                open_as(ua, plat)
+                check(f"{name}: no redirect, no screen", c.ev(shown) is False and "openExternalBrowser" not in c.ev("location.search"))
+            c.send("Emulation.setUserAgentOverride", userAgent=desk, platform="Win32")
+            c.pump()
+            check("no JS errors (inapp)", not c.errors(), c.errors(False))
+
+        # ---------------- audio session (iPhone media playback) ----------------
+        if want("audio"):
+            IOS = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1"
+            desk = c.ev("navigator.userAgent")
+            c.send("Emulation.setUserAgentOverride", userAgent=IOS, platform="iPhone")
+            # a fake navigator.audioSession (iOS 17+ API) that records when "playback" is set, plus counters for
+            # AudioContext creation and HTMLAudioElement use
+            sid = c.send("Page.addScriptToEvaluateOnNewDocument", source=r"""
+              window.__al=[];const AS={_t:'auto',state:'inactive',addEventListener(){},get type(){return this._t},set type(v){this._t=v;__al.push('session:'+v);}};
+              Object.defineProperty(Navigator.prototype,'audioSession',{get:()=>AS,configurable:true});
+              const _AC=window.AudioContext;window.AudioContext=function(){__al.push('context');return new _AC();};
+              window.__audioEls=0;const _A=window.Audio;window.Audio=function(){__audioEls++;return new _A(...arguments);};""")["identifier"]
+            c.nav("http://127.0.0.1:8765/tests/", wait_expr="document.readyState==='complete'"); c.ev("localStorage.clear()")
+            c.nav(BASE + "?nosdk=1&seed=42")
+            c.ev("const S=BONK.Save.d;for(const k of ['aim','gate','summon','merge','boardIntro','reserve','focus','codex'])S.tut[k]=1;S.tutorialDone=true;S.stats.runs=0;BONK.Save.flush()")
+            c.nav(BASE + "?nosdk=1&seed=42&audiodebug=1"); time.sleep(0.3)
+            check("no audio before the first tap (autoplay policy respected)", c.ev("BONK.Sound.ctx===null") is True and c.ev("__al.indexOf('context')") == -1)
+            c.ev("document.querySelector('[data-a=play]').click()")
+            al = c.ev("JSON.stringify(__al)")
+            check("tap Play: audio session set to playback BEFORE the AudioContext is created", 'context' in al and al.index('session:playback') < al.index('context'), al)
+            check("AudioContext running after Play", c.ev("BONK.Sound.ctx.state") == "running")
+            time.sleep(0.2)
+            check("audible start confirmation scheduled after Play", c.ev("BONK.Sound.diag.confirm").startswith("scheduled"), c.ev("BONK.Sound.diag.confirm"))
+            check("no silent HTMLAudio track / looping media element is used", c.ev("__audioEls") == 0 and c.ev("document.querySelectorAll('audio,video').length") == 0)
+            d = json.loads(c.ev("JSON.stringify(BONK.Sound.info())"))
+            check("developer diagnostics (?audiodebug=1) show session, context, mute, error, confirmation",
+                  d["session"].startswith("playback") and d["context"].startswith("running") and "mute" in d and "error" in d and c.ev("!!document.getElementById('audioDiag')&&document.getElementById('audioDiag').textContent.indexOf('session: playback')>=0"), d)
+            # muted player: never audible, confirmation skipped
+            c.ev("document.getElementById('hudSound').click()")
+            r = c.ev("(()=>{let n=0;const t=BONK.Sound.tone;BONK.Sound.tone=function(){n++;return t.apply(this,arguments)};BONK.Sound.confirm();BONK.Sound.play('start');BONK.Sound.tone=t;return [n,BONK.Sound.diag.confirm,BONK.Save.d.settings.mute]})()")
+            check("muted: no confirmation and no tones are played", r[0] == 0 and r[1].startswith("skipped") and r[2] is True, r)
+            c.ev("document.getElementById('hudSound').click()"); time.sleep(0.2)
+            check("Sound ON plays the confirmation again", c.ev("BONK.Save.d.settings.mute") is False and c.ev("BONK.Sound.diag.confirm").startswith("scheduled"))
+            # another app / lock screen: the context is suspended, then the page becomes visible again
+            c.ev("BONK.Sound.ctx.suspend()"); time.sleep(0.2)
+            c.ev("document.dispatchEvent(new Event('visibilitychange'))"); time.sleep(0.3)
+            check("back from another app / lock screen: context resumed and session re-set", c.ev("BONK.Sound.ctx.state") == "running" and c.ev("navigator.audioSession.type") == "playback" and c.ev("BONK.Sound.diag.recoveries") >= 1)
+            c.ev("BONK.Sound.ctx.suspend()"); time.sleep(0.2)
+            c.ev("window.dispatchEvent(new Event('pageshow'))"); time.sleep(0.3)
+            check("pageshow (Home Screen relaunch / back-forward cache) resumes audio", c.ev("BONK.Sound.ctx.state") == "running")
+            # ad interruption
+            c.ev("BONK.Sound.ctx.suspend()"); time.sleep(0.2)
+            c.ev("BONK.Game.state='AD_PLAYING';BONK.Sound.apply();BONK.Game.setState('AIMING')"); time.sleep(0.3)
+            check("after a CrazyGames ad: audio resumes", c.ev("BONK.Sound.ctx.state") == "running" and c.ev("BONK.Game.state") == "AIMING")
+            # iOS sometimes refuses to resume: the next tap builds a fresh context (same settings)
+            n0 = c.ev("BONK.Sound.diag.inits")
+            c.ev("BONK.Sound.rebuildNext=true")
+            x, y = clientxy(c, 224, 400)
+            c.touch("touchStart", x, y); c.touch("touchEnd", x, y); time.sleep(0.3)
+            check("context that will not resume is rebuilt on the next tap", c.ev("BONK.Sound.diag.inits") == n0 + 1 and c.ev("BONK.Sound.ctx.state") == "running" and c.ev("BONK.Sound.rebuildNext") is False)
+            c.ev("BONK.Sound.play('coin')")
+            check("sound effects still work after the rebuild", c.ev("BONK.Sound.ok()") is True)
+            c.send("Page.removeScriptToEvaluateOnNewDocument", identifier=sid)
+            # browsers without navigator.audioSession: no errors, audio still starts
+            c.send("Emulation.setUserAgentOverride", userAgent=desk, platform="Win32")
+            fresh(c)
+            c.ev("BONK.Game.setState('MENU')") if c.ev("BONK.Game.state") != "MENU" else None
+            x, y = clientxy(c, 224, 400)
+            c.touch("touchStart", x, y); c.touch("touchEnd", x, y); time.sleep(0.2)
+            check("no audioSession API (desktop / older iOS): audio starts, nothing breaks", c.ev("BONK.Sound.ctx&&BONK.Sound.ctx.state") == "running" and c.ev("BONK.Sound.info().session") == "not supported" and c.ev("BONK.Sound.diag.err") == "")
+            c.pump()
+            check("no JS errors (audio)", not c.errors(), c.errors(False))
+
         # ---------------- SDK adapter ----------------
         if want("sdk"):
             c.send("Network.setBlockedURLs", urls=["*sdk.crazygames.com*"])
